@@ -10,6 +10,10 @@ import pureconfig.generic.derivation.default.*
 final case class EmberConfig(host: Host, port: Port) derives ConfigReader
 
 object EmberConfig {
+  val x: ConfigReader[EmberConfig] =
+    summon[ConfigReader[
+      EmberConfig
+    ]] // to check whether instance of "ConfigReader[EmberConfig]" is created by compiler or not
   // need given ConfigReader[Host] and ConfigReader[Port] => compiler generates ConfigReader[EmberConfig]
   given hostReader: ConfigReader[Host] = ConfigReader[String].emap { hostString =>
     Host.fromString(hostString) match {
