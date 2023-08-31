@@ -9,7 +9,7 @@ import cats.*
 import cats.syntax.*
 import com.allevite.jobsboard.config.*
 import com.allevite.jobsboard.config.syntax.*
-import com.allevite.jobsboard.http.routes.HealthRoutes
+import com.allevite.jobsboard.http.HttpApi
 import org.http4s.ember.server.EmberServerBuilder
 import pureconfig.ConfigSource
 import pureconfig.error.ConfigReaderException
@@ -28,8 +28,8 @@ object Application extends IOApp.Simple {
       EmberServerBuilder
         .default[IO]
         .withHost(config.host)
-        .withPort(config.port) 
-        .withHttpApp(HealthRoutes[IO].routes.orNotFound)
+        .withPort(config.port)
+        .withHttpApp(HttpApi[IO].endpoints.orNotFound)
         .build
         .use(_ => IO.println("Server ready") >> IO.never)
     }
