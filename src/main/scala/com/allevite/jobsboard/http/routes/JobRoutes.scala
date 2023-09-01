@@ -9,12 +9,14 @@ import org.http4s.server.*
 import cats.*
 import cats.effect.*
 import cats.implicits.*
+import org.typelevel.log4cats.Logger
+import com.allevite.jobsboard.logging.syntax.*
 import com.allevite.jobsboard.domain.job.{Job, JobInfo}
 import com.allevite.jobsboard.http.responses.*
 
 import java.util.UUID
 import scala.collection.mutable
-class JobRoutes[F[_]: Concurrent] private extends Http4sDsl[F] {
+class JobRoutes[F[_]: Concurrent: Logger] private extends Http4sDsl[F] {
 
   // "database"
   private val database = mutable.Map[UUID, Job]()
@@ -28,7 +30,7 @@ class JobRoutes[F[_]: Concurrent] private extends Http4sDsl[F] {
   private val findJobRoute: HttpRoutes[F] = HttpRoutes.of[F] { case GET -> Root / UUIDVar(id) =>
     database.get(id) match {
       case Some(job) => Ok(job)
-      case None      => NotFound(FailureResponse("error")) // NotFound(sJob $id not found")
+      case None      => NotFound(FailureResponse(s"Job $id not found")) // NotFound(sJob $id not found")
     }
   }
 
@@ -45,8 +47,12 @@ class JobRoutes[F[_]: Concurrent] private extends Http4sDsl[F] {
   private val createJobRoute: HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / "create" =>
       for {
-        jobInfo <- req.as[JobInfo]
+       // _ <- Logger[F].info("Trying to add job")
+        jobInfo <- req.as[JobInfo].logError(e => s"Parsing payload failed: $e")
+        //_ <- Logger[F].info(s"Parsed job info: $jobInfo")
         job     <- createJob(jobInfo)
+        //_ <- Logger[F].info(s"Created job: $job")
+        _ <- database.put(job.id, job).pure[F]
         resp    <- Created(job.id)
       } yield resp
   }
@@ -57,7 +63,9 @@ class JobRoutes[F[_]: Concurrent] private extends Http4sDsl[F] {
       database.get(id) match {
         case Some(job) =>
           for {
+          //  _ <- Logger[F].info("Trying to update job")
             jobInfo <- req.as[JobInfo]
+           // _ <- Logger[F].info(s"Parsed job info: $jobInfo")
             _       <- database.put(id, job.copy(jobInfo = jobInfo)).pure[F]
             resp    <- Ok()
 
@@ -88,5 +96,5 @@ class JobRoutes[F[_]: Concurrent] private extends Http4sDsl[F] {
   )
 }
 object JobRoutes {
-  def apply[F[_]: Concurrent] = new JobRoutes[F]
+  def apply[F[_]: Concurrent: Logger] = new JobRoutes[F]
 }
