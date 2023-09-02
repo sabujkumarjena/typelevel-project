@@ -62,7 +62,7 @@ trait JobFixture {
     )
   )
 
-  val AlleviteJob = JobInfo(
+  val AlleviteNewJob = JobInfo(
     "Allevite",
     "Technical Author",
     "For the glory of the Allevite",
