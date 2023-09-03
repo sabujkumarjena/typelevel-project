@@ -11,7 +11,8 @@ import cats.effect.*
 import cats.implicits.*
 import org.typelevel.log4cats.Logger
 import com.allevite.jobsboard.logging.syntax.*
-import com.allevite.jobsboard.domain.job.{Job, JobInfo}
+import com.allevite.jobsboard.domain.job.*
+import com.allevite.jobsboard.domain.pagination.*
 import com.allevite.jobsboard.http.responses.*
 import com.allevite.jobsboard.core.*
 import com.allevite.jobsboard.http.validation.syntax.*
@@ -20,12 +21,16 @@ import java.util.UUID
 import scala.collection.mutable
 class JobRoutes[F[_]: Concurrent: Logger] private (jobs: Jobs[F]) extends HttpValidationDsl[F] {
 
-  // POST /jobs?offset=x&limit=y {filters} //TODO add query params and filters later
-  private val allJobsRoute: HttpRoutes[F] = HttpRoutes.of[F] { case POST -> Root =>
-    for {
-      jobList <- jobs.all()
-      resp    <- Ok(jobList)
-    } yield resp
+  object OffsetQueryParam extends OptionalQueryParamDecoderMatcher[Int]("offset")
+  object LimitQueryParam  extends OptionalQueryParamDecoderMatcher[Int]("limit")
+  // POST /jobs?limit=x&offset=y {filters} //TODO add query params and filters later
+  private val allJobsRoute: HttpRoutes[F] = HttpRoutes.of[F] {
+    case req @ POST -> Root :? LimitQueryParam(limit) +& OffsetQueryParam(offset) =>
+      for {
+        filter  <- req.as[JobFilter]
+        jobList <- jobs.all(filter, Pagination(limit, offset))
+        resp    <- Ok(jobList)
+      } yield resp
   }
 
   // GET /jobs/uuid

@@ -11,6 +11,7 @@ import com.allevite.jobsboard.fixures.JobFixture
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
 
+import com.allevite.jobsboard.Application.logger
 class JobsSpec
     extends AsyncFreeSpec
     with AsyncIOSpec

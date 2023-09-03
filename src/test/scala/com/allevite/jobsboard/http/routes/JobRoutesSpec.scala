@@ -7,14 +7,13 @@ import org.http4s.circe.CirceEntityCodec.*
 import org.http4s.*
 import org.http4s.dsl.*
 import org.http4s.implicits.*
-
 import org.scalatest.freespec.AsyncFreeSpec
 import cats.effect.testing.scalatest.AsyncIOSpec
-
 import org.scalatest.matchers.should.Matchers
 import com.allevite.jobsboard.fixures.*
 import com.allevite.jobsboard.core.*
 import com.allevite.jobsboard.domain.job.*
+import com.allevite.jobsboard.domain.pagination.Pagination
 import org.http4s.HttpRoutes
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.log4cats.Logger
@@ -32,6 +31,8 @@ class JobRoutesSpec
   val jobs: Jobs[IO] = new Jobs[IO] {
     override def create(ownerEmail: String, jobInfo: JobInfo): IO[UUID] =
       IO.pure(NewJobUuid)
+    override def all(filter: JobFilter, pagination: Pagination): IO[List[Job]] =
+      IO.pure(List(AwesomeJob))
     override def all(): IO[List[Job]] = IO.pure(List(AwesomeJob))
     override def find(id: UUID): IO[Option[Job]] =
       if (id == AwesomeJobUuid) IO.pure(Some(AwesomeJob))
