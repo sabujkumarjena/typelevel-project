@@ -7,11 +7,14 @@ import doobie.util.*
 import doobie.postgres.implicits.*
 import doobie.implicits.*
 import cats.effect.testing.scalatest.AsyncIOSpec
-import com.allevite.jobsboard.fixures.JobFixture
+import com.allevite.jobsboard.fixures.*
+import com.allevite.jobsboard.domain.job.*
+import com.allevite.jobsboard.domain.pagination.*
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
-
-import com.allevite.jobsboard.Application.logger
+import org.typelevel.log4cats.Logger
+//import com.allevite.jobsboard.Application.logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 class JobsSpec
     extends AsyncFreeSpec
     with AsyncIOSpec
@@ -19,6 +22,8 @@ class JobsSpec
     with DoobieSpec
     with JobFixture {
   override val initScript: String = "sql/jobs.sql"
+
+  given logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
   "Jobs 'algebra'" - {
     "should return no job if the given UUID does not exist" in {
@@ -104,12 +109,33 @@ class JobsSpec
     "should return zero updated rows if the job id to delete is not found" in {
       transactor.use { xa =>
         val program = for {
-          jobs <- LiveJobs[IO](xa)
+          jobs                <- LiveJobs[IO](xa)
           numberOfDeletedJobs <- jobs.delete(NotFoundJobUuid)
         } yield numberOfDeletedJobs
         program.asserting(_ shouldBe 0)
       }
     }
+
+    "should filter remote jobs" in {
+      transactor.use { xa =>
+        val program = for {
+          jobs         <- LiveJobs[IO](xa)
+          filteredJobs <- jobs.all(JobFilter(remote = true), Pagination.default)
+        } yield filteredJobs
+        program.asserting(_ shouldBe List())
+      }
+    }
+
+    "should filter jobs by tags" in {
+      transactor.use { xa =>
+        val program = for {
+          jobs <- LiveJobs[IO](xa)
+          filteredJobs <- jobs.all(JobFilter(tags = List("scala", "cats", "zio")), Pagination.default)
+        } yield filteredJobs
+        program.asserting(_ shouldBe List(AwesomeJob))
+      }
+    }
+
 
   }
 }
