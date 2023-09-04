@@ -11,6 +11,8 @@ trait UsersFixture {
     Role.ADMIN
   )
 
+  val sabujEmail = Sabuj.email
+
   val Deepak = User(
     "deepak@allevite.com",
     "deepakrulez",
@@ -19,6 +21,8 @@ trait UsersFixture {
     Some("Alle Vite"),
     Role.RECRUITER
   )
+
+  val deepakEmail = Deepak.email
 
   val NewUser = User(
     "newuser@gmail.com",

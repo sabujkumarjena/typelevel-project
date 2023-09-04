@@ -4,7 +4,6 @@ import com.allevite.jobsboard.domain.user.*
 import tsec.authentication.{AugmentedJWT, JWTAuthenticator}
 import tsec.mac.jca.HMACSHA256
 
-
 object security {
   type Crypto              = HMACSHA256
   type JwtToken            = AugmentedJWT[Crypto, String]
