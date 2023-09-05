@@ -15,6 +15,7 @@ trait Auth[F[_]] {
       email: String,
       newPasswordInfo: NewPasswordInfo
   ): F[Either[String, Option[User]]]
+  // TODO password recovery via email
 }
 
 class LiveAuth[F[_]: Async: Logger] private (
@@ -60,30 +61,41 @@ class LiveAuth[F[_]: Async: Logger] private (
     }
 
   } yield result
+
   override def changePassword(
       email: String,
       newPasswordInfo: NewPasswordInfo
-  ): F[Either[String, Option[User]]] =
+  ): F[Either[String, Option[User]]] = {
+
+    def updateUser(user: User, newPassword: String): F[Option[User]] =
+      for {
+        hashedPassword <- BCrypt.hashpw[F](newPasswordInfo.newPassword)
+        updatedUser    <- users.update(user.copy(hashedPassword = hashedPassword))
+      } yield updatedUser
+
+    def checkAndUpdate(
+        user: User,
+        oldPassword: String,
+        newPassword: String
+    ): F[Either[String, Option[User]]] = for {
+      passCheck <- BCrypt
+        .checkpwBool[F](
+          newPasswordInfo.oldPassword,
+          PasswordHash[BCrypt](user.hashedPassword)
+        )
+      updateResult <-
+        if (passCheck) updateUser(user, newPassword).map(Right(_))
+        else Left("Invalid password").pure[F]
+    } yield updateResult
+
     users.find(email).flatMap { // find user
       case None => Right(None).pure[F]
       case Some(user) =>
-        for { // check password
-          passCheck <- BCrypt
-            .checkpwBool[F](
-              newPasswordInfo.oldPassword,
-              PasswordHash[BCrypt](user.hashedPassword)
-            )
-
-          updateResult <-
-            if (passCheck) {
-              for { // update
-                hashedPassword <- BCrypt.hashpw[F](newPasswordInfo.newPassword)
-                updatedUser    <- users.update(user.copy(hashedPassword = hashedPassword))
-              } yield Right(updatedUser)
-            } else Left("Invalid password").pure[F]
-        } yield updateResult
+        val NewPasswordInfo(oldPassword, newPassword) = newPasswordInfo
+        checkAndUpdate(user, oldPassword, newPassword)
 
     }
+  }
 
 }
 
