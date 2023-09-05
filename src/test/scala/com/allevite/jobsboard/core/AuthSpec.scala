@@ -8,7 +8,7 @@ import tsec.passwordhashers.PasswordHash
 //import cats.implicits.*
 //import doobie.implicits.*
 import cats.effect.testing.scalatest.AsyncIOSpec
-import com.allevite.jobsboard.fixures.UsersFixture
+import com.allevite.jobsboard.fixures.UserFixture
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
 import org.typelevel.log4cats.Logger
@@ -21,7 +21,7 @@ import com.allevite.jobsboard.domain.auth.*
 //import org.postgresql.util.PSQLException
 
 import scala.concurrent.duration.*
-class AuthSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with UsersFixture {
+class AuthSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with UserFixture {
 
   given logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 

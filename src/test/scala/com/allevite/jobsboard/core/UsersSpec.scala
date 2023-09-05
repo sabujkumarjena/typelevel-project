@@ -5,7 +5,7 @@ import cats.effect.*
 import cats.implicits.*
 import doobie.implicits.*
 import cats.effect.testing.scalatest.AsyncIOSpec
-import com.allevite.jobsboard.fixures.UsersFixture
+import com.allevite.jobsboard.fixures.UserFixture
 import org.scalatest.freespec.AsyncFreeSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.Inside
@@ -19,7 +19,7 @@ class UsersSpec
     with Matchers
     with Inside
     with DoobieSpec
-    with UsersFixture {
+    with UserFixture {
   override val initScript: String = "sql/users.sql"
   given logger: Logger[IO]        = Slf4jLogger.getLogger[IO]
   "Users 'algebra'" - {
