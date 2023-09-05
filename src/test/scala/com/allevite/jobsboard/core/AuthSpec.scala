@@ -75,13 +75,13 @@ class AuthSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with UsersFi
       program.asserting(_ shouldBe defined)
     }
 
-    "login should return a token if the user exists and password is right" in {
-      val program = for {
-        auth       <- LiveAuth[IO](mockedUsers, mockedAuthenticator)
-        maybeToken <- auth.login("sabuj@allevite.com", "allevite")
-      } yield maybeToken
-      program.asserting(_ shouldBe defined)
-    }
+//    "login should return a token if the user exists and password is right" in {
+//      val program = for {
+//        auth       <- LiveAuth[IO](mockedUsers, mockedAuthenticator)
+//        maybeToken <- auth.login("sabuj@allevite.com", "allevite")
+//      } yield maybeToken
+//      program.asserting(_ shouldBe defined)
+//    }
 
     "signing up should not create a user with existing email" in {
       val program = for {

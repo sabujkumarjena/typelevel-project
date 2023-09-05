@@ -19,7 +19,7 @@ INSERT INTO users (
     role
 ) values (
     'sabuj@allevite.com',
-    'allevite',
+    '$2a$10$hCkLO1p6W4dAmFtgpCifquMszyQSkLAW94oYgOcv3uMK7.mY8rCfu',
     'Sabuj',
     'Jena',
     'Alle Vite',
@@ -35,7 +35,7 @@ INSERT INTO users (
     role
 ) values (
     'deepak@allevite.com',
-    'deepakrulez',
+    '$2a$10$cptmdsaJ2aTw4l2nzxOKDeUPysgwDqpd9Jir6BkcUiIKBc0VIcJfC',
     'Deepak',
     'Pradhan',
     'Alle Vite',

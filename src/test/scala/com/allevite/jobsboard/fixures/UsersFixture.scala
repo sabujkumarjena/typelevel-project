@@ -1,10 +1,17 @@
 package com.allevite.jobsboard.fixures
 
 import com.allevite.jobsboard.domain.user.*
+
+/*
+allevite => $2a$10$hCkLO1p6W4dAmFtgpCifquMszyQSkLAW94oYgOcv3uMK7.mY8rCfu
+deepakrulez =>  $2a$10$cptmdsaJ2aTw4l2nzxOKDeUPysgwDqpd9Jir6BkcUiIKBc0VIcJfC
+simplepassword => $2a$10$7G0yBADs6tlB68T70e8v6.Jpf7NwWlYwjdos6p9D8rvKvp3NZ.SVu
+deepakrocks =>  $2a$10$Z5HPEKqr1cffRnxs3HqiiumtcFXcFohNqUEMWHEkd5MWJPYcLIWmK
+ */
 trait UsersFixture {
   val Sabuj = User(
     "sabuj@allevite.com",
-    "allevite",
+    "$2a$10$hCkLO1p6W4dAmFtgpCifquMszyQSkLAW94oYgOcv3uMK7.mY8rCfu",
     Some("Sabuj"),
     Some("Jena"),
     Some("Alle Vite"),
@@ -15,7 +22,7 @@ trait UsersFixture {
 
   val Deepak = User(
     "deepak@allevite.com",
-    "deepakrulez",
+    "$2a$10$cptmdsaJ2aTw4l2nzxOKDeUPysgwDqpd9Jir6BkcUiIKBc0VIcJfC",
     Some("Deepak"),
     Some("Pradhan"),
     Some("Alle Vite"),
@@ -26,7 +33,7 @@ trait UsersFixture {
 
   val NewUser = User(
     "newuser@gmail.com",
-    "simplepassword",
+    "$2a$10$7G0yBADs6tlB68T70e8v6.Jpf7NwWlYwjdos6p9D8rvKvp3NZ.SVu",
     Some("John"),
     Some("Doe"),
     Some("Some company"),
@@ -35,7 +42,7 @@ trait UsersFixture {
 
   val updatedDeepak = User(
     "deepak@allevite.com",
-    "deepakrocks",
+    "$2a$10$Z5HPEKqr1cffRnxs3HqiiumtcFXcFohNqUEMWHEkd5MWJPYcLIWmK",
     Some("DEEPAK"),
     Some("PRADHAN"),
     Some("Adobe"),
