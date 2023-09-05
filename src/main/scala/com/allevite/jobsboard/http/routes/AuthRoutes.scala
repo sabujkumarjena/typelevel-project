@@ -15,6 +15,8 @@ import com.allevite.jobsboard.core.*
 import com.allevite.jobsboard.domain.auth.*
 import com.allevite.jobsboard.domain.security.*
 import com.allevite.jobsboard.domain.user.*
+
+import scala.language.implicitConversions
 class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends HttpValidationDsl[F] {
   private val authenticator = auth.authenticator
   private val securedHandler: SecuredRequestHandler[F, String, User, JwtToken] =
@@ -73,9 +75,25 @@ class AuthRoutes[F[_]: Concurrent: Logger] private (auth: Auth[F]) extends HttpV
     } yield resp
   }
 
+  // DELETE /auth/users/sabuj@allevite.com
+  private val deleteUserRoute: AuthRoute[F] = {
+    case req @ DELETE -> Root / "users" / email asAuthed user =>
+      // auth - delete user
+      auth.delete(email).flatMap {
+        case true  => Ok()
+        case false => NotFound()
+      }
+
+  }
+
   val unauthedRoutes = (loginRout <+> createUserRoute)
   val authedRoutes =
-    securedHandler.liftService(TSecAuthService(changePasswordRoute.orElse(logoutRoute)))
+    securedHandler.liftService(
+      changePasswordRoute.restrictedTo(allRoles) |+|
+        logoutRoute.restrictedTo(allRoles) |+|
+        deleteUserRoute.restrictedTo(adminOnly)
+        // TSecAuthService(changePasswordRoute.orElse(logoutRoute).orElse(deleteUserRoute))
+    )
   val routes = Router(
     "/auth" -> (unauthedRoutes <+> authedRoutes)
   )

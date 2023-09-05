@@ -15,7 +15,7 @@ trait Auth[F[_]] {
       email: String,
       newPasswordInfo: NewPasswordInfo
   ): F[Either[String, Option[User]]]
-
+  def delete(email: String): F[Boolean]
   def authenticator: Authenticator[F] = ???
   // TODO password recovery via email
 }
@@ -98,6 +98,8 @@ class LiveAuth[F[_]: Async: Logger] private (
 
     }
   }
+
+  override def delete(email: String): F[Boolean] = users.delete(email)
 
 }
 
