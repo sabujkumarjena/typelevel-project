@@ -51,23 +51,37 @@ class AuthRoutesSpec
     // jwt authenticator
     JWTAuthenticator.unbacked.inBearerToken(
       // expiry of tokens, max idle, idStore, key
-      1.day, // expiration of tokens
-      None, // max idle time (optional)
+      1.day,   // expiration of tokens
+      None,    // max idle time (optional)
       idStore, // identity store
-      key // hash key
+      key      // hash key
     )
   }
 
   val mockedAuth: Auth[IO] = new Auth[IO] {
     // TODO make sure only sabuj already exists
-    override def login(email: String, password: String): IO[Option[JwtToken]] = ???
+    override def login(email: String, password: String): IO[Option[JwtToken]] =
+      if (email == sabujEmail && password == sabujPassword)
+        mockedAuthenticator.create(sabujEmail).map(Some(_))
+      else IO.pure(None)
 
-    override def signUp(newUserInfo: user.NewUserInfo): IO[Option[user.User]] = ???
+    override def signUp(newUserInfo: user.NewUserInfo): IO[Option[user.User]] =
+      if (newUserInfo.email == deepakEmail) IO.pure(Some(Deepak))
+      else IO.pure(None)
 
     override def changePassword(
         email: String,
         newPasswordInfo: auth.NewPasswordInfo
-    ): IO[Either[String, Option[user.User]]] = ???
+    ): IO[Either[String, Option[user.User]]] =
+      if (email == sabujEmail)
+        if (newPasswordInfo.oldPassword == sabujPassword)
+          IO.pure(Right(Some(Sabuj)))
+        else
+          IO.pure(Left("Invalid password"))
+      else
+        IO.pure(Right(None))
+
+    override def authenticator: Authenticator[IO] = mockedAuthenticator
   }
 
   extension (r: Request[IO])
@@ -149,7 +163,6 @@ class AuthRoutesSpec
       for {
         response <- authRoutes.orNotFound.run(
           Request(method = Method.POST, uri = uri"/auth/logout")
-
         )
       } yield {
         // assertions here
@@ -158,7 +171,6 @@ class AuthRoutesSpec
     }
 
     // change password - user doesn't exist => 404 Not Found
-
 
     "should return a 404 - Unauthorized if changing password for user that doesn't exist " in {
       for {
