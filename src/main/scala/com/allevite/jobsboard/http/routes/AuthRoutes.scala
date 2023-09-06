@@ -28,10 +28,10 @@ class AuthRoutes[F[_]: Concurrent: Logger: SecuredHandler] private (
       val maybeJwtToken = for {
 
         maybeUser <- auth.login(loginInfo.email, loginInfo.password)
-        _          <- Logger[F].info(s"User logging in : ${loginInfo.email}")
+        _         <- Logger[F].info(s"User logging in : ${loginInfo.email}")
         // TODO create a new token
         //  return a new token if password matches
-         maybeToken <- maybeUser.traverse(user => authenticator.create(user.email))
+        maybeToken <- maybeUser.traverse(user => authenticator.create(user.email))
       } yield maybeToken
       maybeJwtToken map {
         case Some(jwtToken) =>
@@ -74,12 +74,28 @@ class AuthRoutes[F[_]: Concurrent: Logger: SecuredHandler] private (
   // POST /auth/reset { ForgotPasswordInfo }
 
   private val forgotPasswordRoute: HttpRoutes[F] = HttpRoutes.of[F] {
-    case req @ POST -> Root / "reset" => Ok("TODO")
-   }
+    case req @ POST -> Root / "reset" =>
+      for {
+        fpInfo <- req.as[ForgotPasswordInfo]
+        _      <- auth.sendPasswordRecoveryToken(fpInfo.email)
+        resp   <- Ok()
+      } yield resp
+  }
 
   // POST /auth/recover {RecoverPasswordInfo}
-  private val recoverPasswordRoute: HttpRoutes[F] = HttpRoutes. of[F] {
-    case req @ POST -> Root / "recover" => Ok("TODO")
+  private val recoverPasswordRoute: HttpRoutes[F] = HttpRoutes.of[F] {
+    case req @ POST -> Root / "recover" =>
+      for {
+        rpInfo <- req.as[RecoverPasswordInfo]
+        recoverySuccessful <- auth.recoverPasswordFromToken(
+          rpInfo.email,
+          rpInfo.token,
+          rpInfo.newPassword
+        )
+        resp <-
+          if (recoverySuccessful) Ok()
+          else Forbidden(FailureResponse("Email/Token combination is incorrect"))
+      } yield resp
   }
   // POST /auth/logout {Authorization: Bearer {jwt} } => 200 OK
   private val logoutRoute: AuthRoute[F] = { case req @ POST -> Root / "logout" asAuthed _ =>
@@ -101,7 +117,7 @@ class AuthRoutes[F[_]: Concurrent: Logger: SecuredHandler] private (
 
   }
 
-  val unauthedRoutes = (loginRout <+> createUserRoute)
+  val unauthedRoutes = (loginRout <+> createUserRoute <+> forgotPasswordRoute <+> recoverPasswordRoute)
   val authedRoutes =
     SecuredHandler[F].liftService(
       changePasswordRoute.restrictedTo(allRoles) |+|
