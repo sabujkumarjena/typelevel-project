@@ -24,7 +24,7 @@ import org.http4s.headers.Authorization
 import org.typelevel.ci.CIStringSyntax
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.log4cats.Logger
-import tsec.authentication.{IdentityStore, JWTAuthenticator}
+import tsec.authentication.{IdentityStore, JWTAuthenticator, SecuredRequestHandler}
 import tsec.jws.mac.JWTMac
 import tsec.mac.jca.HMACSHA256
 import tsec.passwordhashers.jca.BCrypt
@@ -56,4 +56,6 @@ trait SecuredRouteFixture extends UserFixture {
       // Authorization: Bearer {jwt}
       Authorization(Credentials.Token(AuthScheme.Bearer, jwtString))
     }
+
+  given securedHandler: SecuredHandler[IO] = SecuredRequestHandler(mockedAuthenticator)
 }

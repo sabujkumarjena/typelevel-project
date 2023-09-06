@@ -45,9 +45,9 @@ class AuthRoutesSpec
 
   val mockedAuth: Auth[IO] = new Auth[IO] {
     // TODO make sure only sabuj already exists
-    override def login(email: String, password: String): IO[Option[JwtToken]] =
+    override def login(email: String, password: String): IO[Option[User]] =
       if (email == sabujEmail && password == sabujPassword)
-        mockedAuthenticator.create(sabujEmail).map(Some(_))
+        IO(Some(Sabuj))
       else IO.pure(None)
 
     override def signUp(newUserInfo: user.NewUserInfo): IO[Option[user.User]] =
@@ -67,12 +67,12 @@ class AuthRoutesSpec
         IO.pure(Right(None))
 
     override def delete(email: String): IO[Boolean] = IO.pure(true)
-    override def authenticator: Authenticator[IO]   = mockedAuthenticator
+    def authenticator: Authenticator[IO]   = mockedAuthenticator
   }
 
-  
+
   given logger: Logger[IO]       = Slf4jLogger.getLogger[IO]
-  val authRoutes: HttpRoutes[IO] = AuthRoutes[IO](mockedAuth).routes
+  val authRoutes: HttpRoutes[IO] = AuthRoutes[IO](mockedAuth, mockedAuthenticator).routes
 
   ////////////////////////
   // tests
