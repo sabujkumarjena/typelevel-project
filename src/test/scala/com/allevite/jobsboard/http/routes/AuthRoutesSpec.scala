@@ -42,7 +42,6 @@ class AuthRoutesSpec
   // prep
   //////////////////
 
-
   val mockedAuth: Auth[IO] = new Auth[IO] {
     // TODO make sure only sabuj already exists
     override def login(email: String, password: String): IO[Option[User]] =
@@ -67,9 +66,13 @@ class AuthRoutesSpec
         IO.pure(Right(None))
 
     override def delete(email: String): IO[Boolean] = IO.pure(true)
-    def authenticator: Authenticator[IO]   = mockedAuthenticator
-  }
 
+    def sendPasswordRecoveryToken(email: String): IO[Unit] = ???
+
+    def recoverPasswordFromToken(email: String, token: String, newPassword: String): IO[Boolean] =
+      ???
+    def authenticator: Authenticator[IO] = mockedAuthenticator
+  }
 
   given logger: Logger[IO]       = Slf4jLogger.getLogger[IO]
   val authRoutes: HttpRoutes[IO] = AuthRoutes[IO](mockedAuth, mockedAuthenticator).routes

@@ -4,6 +4,7 @@ package com.allevite.jobsboard.core
 import cats.data.OptionT
 import cats.effect.*
 import com.allevite.jobsboard.config.SecurityConfig
+import tsec.authentication.unliftedCookieFromRequest
 import tsec.passwordhashers.jca.BCrypt
 import tsec.passwordhashers.PasswordHash
 //import cats.implicits.*
@@ -26,39 +27,40 @@ class AuthSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with UserFix
 
   given logger: Logger[IO] = Slf4jLogger.getLogger[IO]
 
- 
-
   val mockedConfig = SecurityConfig("secrete", 1.day)
+  val mockedTokens: Tokens[IO] = new Tokens[IO] {
+    override def getToken(email: String): IO[Option[String]] =
+      if (email == sabujEmail) IO.pure("abc123").map(Some(_))
+      else IO.pure(None)
 
-//  val mockedAuthenticator: Authenticator[IO] = {
-//    // key for hashing
-//    val key = HMACSHA256.unsafeGenerateKey
-//    // identity store to retrieve users
-//    val idStore: IdentityStore[IO, String, User] = (email: String) =>
-//      if (email == sabujEmail) OptionT.pure(Sabuj)
-//      else if (email == deepakEmail) OptionT.pure(Deepak)
-//      else OptionT.none[IO, User]
-//    // jwt authenticator
-//    JWTAuthenticator.unbacked.inBearerToken(
-//      // expiry of tokens, max idle, idStore, key
-//      1.day,   // expiration of tokens
-//      None,    // max idle time (optional)
-//      idStore, // identity store
-//      key      // hash key
-//    )
-//  }
-//
+    override def checkToken(email: String, token: String): IO[Boolean] = IO.pure(token == "abc123")
+  }
+
+  val mockedEmails: Emails[IO] = new Emails[IO] {
+    override def sendEmail(to: String, subject: String, content: String): IO[Unit] = IO.unit
+
+    override def sendPasswordRecoveryEmail(to: String, token: String): IO[Unit] = IO.unit
+  }
+
+  def probedEmails(users: Ref[IO, Set[String]]): Emails[IO] = new Emails[IO] {
+    override def sendEmail(to: String, subject: String, content: String): IO[Unit] =
+      users.modify(set => (set + to, ()))
+
+    override def sendPasswordRecoveryEmail(to: String, token: String): IO[Unit] =
+      sendEmail(to, "your token", "token")
+  }
+
   "Auth 'algebra'" - {
     "login should return None if the user doesn't exist" in {
       val program = for {
-        auth       <- LiveAuth[IO](mockedUsers)
+        auth       <- LiveAuth[IO](mockedUsers, mockedTokens, mockedEmails)
         maybeToken <- auth.login("user@allevite.com", "password")
       } yield maybeToken
       program.asserting(_ shouldBe None)
     }
     "login should return None if the user exists but the password is wrong" in {
       val program = for {
-        auth       <- LiveAuth[IO](mockedUsers)
+        auth       <- LiveAuth[IO](mockedUsers, mockedTokens, mockedEmails)
         maybeToken <- auth.login("sabuj@allevite.com", "wrongpassword")
       } yield maybeToken
       program.asserting(_ shouldBe None)
@@ -66,7 +68,7 @@ class AuthSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with UserFix
 
     "login should return a token if the user exists and password is right" in {
       val program = for {
-        auth       <- LiveAuth[IO](mockedUsers)
+        auth       <- LiveAuth[IO](mockedUsers, mockedTokens, mockedEmails)
         maybeToken <- auth.login("sabuj@allevite.com", "allevite")
       } yield maybeToken
       program.asserting(_ shouldBe defined)
@@ -82,7 +84,7 @@ class AuthSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with UserFix
 
     "signing up should not create a user with existing email" in {
       val program = for {
-        auth <- LiveAuth[IO](mockedUsers)
+        auth <- LiveAuth[IO](mockedUsers, mockedTokens, mockedEmails)
         maybeUser <- auth.signUp(
           NewUserInfo(
             sabujEmail,
@@ -98,7 +100,7 @@ class AuthSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with UserFix
 
     "signing up should create a completely new user " in {
       val program = for {
-        auth <- LiveAuth[IO](mockedUsers)
+        auth <- LiveAuth[IO](mockedUsers, mockedTokens, mockedEmails)
         maybeUser <- auth.signUp(
           NewUserInfo(
             "bob@allevite.com",
@@ -121,7 +123,7 @@ class AuthSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with UserFix
     }
     "changePassword should return Right(None) if the user doesn't exist" in {
       val program = for {
-        auth   <- LiveAuth[IO](mockedUsers)
+        auth   <- LiveAuth[IO](mockedUsers, mockedTokens, mockedEmails)
         result <- auth.changePassword("allice@allevite.com", NewPasswordInfo("oldpw", "newpw"))
       } yield result
       program.asserting(_ shouldBe Right(None))
@@ -129,7 +131,7 @@ class AuthSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with UserFix
 
     "changePassword should return Left with an error if the user exist and password is incorrect " in {
       val program = for {
-        auth   <- LiveAuth[IO](mockedUsers)
+        auth   <- LiveAuth[IO](mockedUsers, mockedTokens, mockedEmails)
         result <- auth.changePassword(sabujEmail, NewPasswordInfo("oldpw", "newpw"))
       } yield result
       program.asserting(_ shouldBe Left("Invalid password"))
@@ -137,7 +139,7 @@ class AuthSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with UserFix
 
     "changePassword should correctly change password if all details are correct " in {
       val program = for {
-        auth   <- LiveAuth[IO](mockedUsers)
+        auth   <- LiveAuth[IO](mockedUsers, mockedTokens, mockedEmails)
         result <- auth.changePassword(sabujEmail, NewPasswordInfo("allevite", "scalarocks"))
         isNicePassword <- result match {
           case Right(Some(user)) =>
@@ -147,6 +149,53 @@ class AuthSpec extends AsyncFreeSpec with AsyncIOSpec with Matchers with UserFix
         }
       } yield isNicePassword
       program.asserting(_ shouldBe true)
+    }
+
+    "recoverPassword should fail for  user that doesn't exist, even if the token is correct " in {
+      val program = for {
+        auth    <- LiveAuth[IO](mockedUsers, mockedTokens, mockedEmails)
+        result1 <- auth.recoverPasswordFromToken("someone@gmail.com", "abc123", "igotya")
+        result2 <- auth.recoverPasswordFromToken("someone@gmail.com", "wrongtoken", "igotya")
+      } yield (result1, result2)
+      program.asserting(_ shouldBe (false, false))
+    }
+
+    "recoverPassword should fail for a user that exists, but the token is wrong " in {
+      val program = for {
+        auth   <- LiveAuth[IO](mockedUsers, mockedTokens, mockedEmails)
+        result <- auth.recoverPasswordFromToken(sabujEmail, "wrogtoken", "igotya")
+      } yield result
+      program.asserting(_ shouldBe false)
+    }
+
+    "recoverPassword should succeed for a correct combination of user/token " in {
+      val program = for {
+        auth   <- LiveAuth[IO](mockedUsers, mockedTokens, mockedEmails)
+        result <- auth.recoverPasswordFromToken(sabujEmail, "abc123", "igotya")
+      } yield result
+      program.asserting(_ shouldBe true)
+    }
+
+    "sending recovery password should fail for a user that doesn't exist " in {
+      val program = for {
+        set                 <- Ref.of[IO, Set[String]](Set())
+        emails              <- IO(probedEmails(set))
+        auth                <- LiveAuth[IO](mockedUsers, mockedTokens, emails)
+        result              <- auth.sendPasswordRecoveryToken("someone@gmail.com")
+        usersBengSentEmails <- set.get
+      } yield usersBengSentEmails
+      program.asserting(_ shouldBe empty)
+    }
+
+    "sending recovery password should succeed for a user that exists " in {
+      val program = for {
+        set <- Ref.of[IO, Set[String]](Set())
+        emails <- IO(probedEmails(set))
+        auth <- LiveAuth[IO](mockedUsers, mockedTokens, emails)
+        result <- auth.sendPasswordRecoveryToken(sabujEmail)
+        usersBengSentEmails <- set.get
+      } yield usersBengSentEmails
+      program.asserting(_ should contain(sabujEmail))
     }
 
   }
