@@ -10,6 +10,7 @@ import org.scalajs.dom.{window, console, document}
 
 import scala.concurrent.duration.*
 import core.*
+import com.allevite.jobsboard.components.*
 
 object App {
 
@@ -41,22 +42,9 @@ class App extends TyrianApp[App.Msg, App.Model] {
   // view triggered whenever model changes
   override def view(model: Model): Html[Msg] =
     div(
-      renderNavLink("Jobs", "/jobs"),
-      renderNavLink("Login", "/login"),
-      renderNavLink("Sign Up", "/signup"),
+      Header.view(),
       div(s"You are now at : ${model.router.location}")
     )
 
-  private def renderNavLink(text: String, location: String) =
-    a(
-      href    := location,
-      `class` := "nav-link",
-      onEvent(
-        "click",
-        e => {
-          e.preventDefault() // native JS - prevent reloading
-          Router.ChangeLocation(location)
-        }
-      )
-    )(text)
+
 }
