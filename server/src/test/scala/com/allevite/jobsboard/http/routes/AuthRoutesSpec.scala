@@ -52,7 +52,7 @@ class AuthRoutesSpec
           IO(Some(Sabuj))
         else IO.pure(None)
 
-      override def signUp(newUserInfo: user.NewUserInfo): IO[Option[user.User]] =
+      override def signUp(newUserInfo: NewUserInfo): IO[Option[user.User]] =
         if (newUserInfo.email == deepakEmail) IO.pure(Some(Deepak))
         else IO.pure(None)
 
@@ -295,8 +295,8 @@ class AuthRoutesSpec
     "should return a 403 - Forbidden when recovering  a password for a user with incorrect token " in {
       for {
         userMapRef <- Ref.of[IO, Map[String, String]](Map(sabujEmail -> "abc123"))
-        auth <- IO(probedAuth(Some(userMapRef)))
-        routes <- IO(AuthRoutes(auth, mockedAuthenticator))
+        auth       <- IO(probedAuth(Some(userMapRef)))
+        routes     <- IO(AuthRoutes(auth, mockedAuthenticator))
         response <- authRoutes.orNotFound.run(
           Request(method = Method.POST, uri = uri"/auth/recover")
             .withEntity(RecoverPasswordInfo(sabujEmail, "wrong token", "newpassword"))

@@ -4,6 +4,7 @@ import cats.*
 import cats.effect.*
 import com.allevite.jobsboard.core.Users
 import com.allevite.jobsboard.domain.user.*
+import com.allevite.jobsboard.domain.auth.*
 
 /*
 allevite => $2a$10$hCkLO1p6W4dAmFtgpCifquMszyQSkLAW94oYgOcv3uMK7.mY8rCfu

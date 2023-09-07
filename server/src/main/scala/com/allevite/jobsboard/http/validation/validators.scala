@@ -6,7 +6,7 @@ import cats.data.*
 import cats.data.Validated.*
 import cats.implicits.*
 import com.allevite.jobsboard.domain.auth.*
-import com.allevite.jobsboard.domain.user.NewUserInfo
+import com.allevite.jobsboard.domain.user.*
 
 import java.net.URL
 import scala.util.{Failure, Success, Try}

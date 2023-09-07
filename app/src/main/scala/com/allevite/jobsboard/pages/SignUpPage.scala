@@ -7,6 +7,7 @@ import tyrian.Html.*
 import tyrian.cmds.Logger
 import org.scalajs.dom.{console, document, window}
 import com.allevite.jobsboard.common.*
+import com.allevite.jobsboard.domain.auth.*
 
 // form
 /*
@@ -126,5 +127,11 @@ object SignUpPage {
   // actions
   case object AttemptSignUp extends Msg
   case object NoOp          extends Msg
+
+  object Commands {
+    def signup(newUserInfo: NewUserInfo): Cmd[IO, Msg ] = {
+      ???
+    }
+  }
 
 }
