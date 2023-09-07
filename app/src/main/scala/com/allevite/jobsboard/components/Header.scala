@@ -6,6 +6,7 @@ import scala.scalajs.js
 import scala.scalajs.js.annotation.*
 
 import com.allevite.jobsboard.core.*
+import com.allevite.jobsboard.pages.*
 object Header {
   // public API
   def view() =
@@ -13,9 +14,9 @@ object Header {
       renderLogo(),
       div(`class` := "header-nav")(
         ul(`class` := "header-links")(
-          renderNavLink("Jobs", "/jobs"),
-          renderNavLink("Login", "/login"),
-          renderNavLink("Sign Up", "/signup")
+          renderNavLink("Jobs", Page.Urls.JOBS),
+          renderNavLink("Login", Page.Urls.LOGIN),
+          renderNavLink("Sign Up", Page.Urls.SIGNUP)
         )
       )
     )
@@ -37,8 +38,8 @@ object Header {
     )(
       img(
         `class` := "home-logo",
-        src := logoImage,
-        alt := "Allevite"
+        src     := logoImage,
+        alt     := "Allevite"
       )
     )
   private def renderNavLink(text: String, location: String) =
