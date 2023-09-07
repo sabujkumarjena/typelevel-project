@@ -1,5 +1,6 @@
 package com.allevite.jobsboard
 
+import org.http4s.server.middleware.CORS
 import org.http4s.*
 import org.http4s.dsl.*
 import org.http4s.dsl.impl.*
@@ -35,7 +36,7 @@ object Application extends IOApp.Simple {
               .default[IO]
               .withHost(emberConfig.host)
               .withPort(emberConfig.port)
-              .withHttpApp(httpApi.endpoints.orNotFound)
+              .withHttpApp(CORS(httpApi.endpoints).orNotFound) //TODO remove this when deploying
               .build
         } yield server
         appResource.use(_ => IO.println("Server ready") >> IO.never)

@@ -1,13 +1,18 @@
 package com.allevite.jobsboard.pages
 
+import io.circe.syntax.*
+import io.circe.generic.auto.*
+import io.circe.parser.*
+
 import cats.effect.*
-import com.allevite.jobsboard.pages.Page.*
+import com.allevite.jobsboard.pages.*
 import tyrian.*
 import tyrian.Html.*
 import tyrian.cmds.Logger
 import org.scalajs.dom.{console, document, window}
 import com.allevite.jobsboard.common.*
 import com.allevite.jobsboard.domain.auth.*
+import tyrian.http.*
 
 // form
 /*
@@ -48,8 +53,22 @@ case class SignUpPage(
       else if (password != confirmPassword)
         (setErrorStatus("Password fields don't match"), Cmd.None)
       else
-        (this, Logger.consoleLog[IO]("SIGNING UP!", email, password, firstName, lastName, company))
-    case _ => (this, Cmd.None)
+        (
+          this,
+          Commands.signup(
+            NewUserInfo(
+              email,
+              password,
+              Option(firstName).filter(_.nonEmpty),
+              Option(lastName).filter(_.nonEmpty),
+              Option(company).filter(_.nonEmpty)
+            )
+          )
+        )
+
+    case SignUpError(message)   => (setErrorStatus(message), Cmd.None)
+    case SignUpSuccess(message) => (setSuccessStatus(message), Cmd.None)
+    case _                      => (this, Cmd.None)
   }
 
   override def view(): Html[Page.Msg] =
@@ -112,6 +131,9 @@ case class SignUpPage(
   // util
   def setErrorStatus(message: String): Page =
     this.copy(status = Some(Page.Status(message, Page.StatusKind.ERROR)))
+
+  def setSuccessStatus(message: String): Page =
+    this.copy(status = Some(Page.Status(message, Page.StatusKind.SUCCESS)))
 }
 
 object SignUpPage {
@@ -127,10 +149,37 @@ object SignUpPage {
   // actions
   case object AttemptSignUp extends Msg
   case object NoOp          extends Msg
+  // statuses
+  case class SignUpError(message: String)   extends Msg
+  case class SignUpSuccess(message: String) extends Msg
 
   object Commands {
-    def signup(newUserInfo: NewUserInfo): Cmd[IO, Msg ] = {
-      ???
+    def signup(newUserInfo: NewUserInfo): Cmd[IO, Msg] = {
+      val onSuccess: Response => Msg =
+        response =>
+          response.status match {
+            case Status(201, _) => SignUpSuccess("Success! Log in Now. ")
+            case Status(s, _) if s >= 400 && s < 500 =>
+              val json   = response.body
+              val parsed = parse(json).flatMap(json => json.hcursor.get[String]("error"))
+              parsed match {
+                case Left(e)  => SignUpError(s"Error: ${e.getMessage}")
+                case Right(e) => SignUpError(e)
+              }
+          }
+      val onError: HttpError => Msg =
+        e => SignUpError(e.toString)
+      Http.send(
+        Request(
+          url = "http://localhost:4041/api/auth/users",
+          method = Method.Post,
+          headers = List(),
+          body = Body.json(newUserInfo.asJson.toString),
+          timeout = Request.DefaultTimeOut,
+          withCredentials = false
+        ),
+        Decoder[Msg](onSuccess, onError)
+      )
     }
   }
 
