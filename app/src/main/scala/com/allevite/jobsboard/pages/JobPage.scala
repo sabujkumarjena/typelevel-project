@@ -11,6 +11,6 @@ case class JobPage(id: String) extends Page {
   override def update(msg: Msg): (Page, Cmd[IO, Msg]) = (this, Cmd.None)
 
   override def view(): Html[Msg] =
-    div("Job  page - TODO")
+    div(s"Job  page - $id")
 
 }

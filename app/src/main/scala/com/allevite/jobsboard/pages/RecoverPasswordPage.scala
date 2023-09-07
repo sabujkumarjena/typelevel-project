@@ -11,6 +11,6 @@ case class RecoverPasswordPage() extends Page {
   override def update(msg: Msg): (Page, Cmd[IO, Msg]) = (this, Cmd.None)
 
   override def view(): Html[Msg] =
-    div("Job List page - TODO")
+    div("Recover passsword- TODO")
 
 }
