@@ -6,11 +6,11 @@ import tyrian.*
 import tyrian.Html.*
 
 case class ForgotPasswordPage() extends Page {
-  override def initCmd: Cmd[IO, Msg] = Cmd.None
+  override def initCmd: Cmd[IO, Page.Msg] = Cmd.None
 
-  override def update(msg: Msg): (Page, Cmd[IO, Msg]) = (this, Cmd.None)
+  override def update(msg: Page.Msg): (Page, Cmd[IO, Page.Msg]) = (this, Cmd.None)
 
-  override def view(): Html[Msg] =
+  override def view(): Html[Page.Msg] =
     div("Forgot password page - TODO")
 
 }
