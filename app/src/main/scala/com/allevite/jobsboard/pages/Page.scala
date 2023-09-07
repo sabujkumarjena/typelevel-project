@@ -23,8 +23,9 @@ object Page {
     case `FORGOT_PASSWORD`         => ForgotPasswordPage()
     case `RECOVER_PASSWORD`        => RecoverPasswordPage()
     case `EMPTY` | `HOME` | `JOBS` => JobListPage()
-    case s"${`JOBS`}/$id"          => JobPage(id)
-    case _                         => NotFoundPage()
+    //  case s"${`JOBS`}/$id"          => JobPage(id)
+    case s"/jobs/$id" => JobPage(id)
+    case _            => NotFoundPage()
   }
 }
 abstract class Page {
