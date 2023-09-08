@@ -3,7 +3,6 @@ package com.allevite.jobsboard.pages
 import io.circe.syntax.*
 import io.circe.generic.auto.*
 import io.circe.parser.*
-
 import cats.effect.*
 import com.allevite.jobsboard.pages.*
 import tyrian.*
@@ -12,6 +11,7 @@ import tyrian.cmds.Logger
 import org.scalajs.dom.{console, document, window}
 import com.allevite.jobsboard.common.*
 import com.allevite.jobsboard.domain.auth.*
+import io.circe.Encoder
 import tyrian.http.*
 
 // form
@@ -103,9 +103,10 @@ case class SignUpPage(
         renderInput("Last Name", "lastName", "text", false, UpdateLastName(_)),
         renderInput("Company", "company", "text", false, UpdateCompany(_)),
         // button
-        button(`type` := "button", onClick(AttemptSignUp))("Sign Up"),
-        status.map(s => div(s.message)).getOrElse(div())
-      )
+        button(`type` := "button", onClick(AttemptSignUp))("Sign Up")
+
+      ),
+      status.map(s => div(s.message)).getOrElse(div())
     )
 
     ////////////////////////////////////
@@ -153,34 +154,29 @@ object SignUpPage {
   case class SignUpError(message: String)   extends Msg
   case class SignUpSuccess(message: String) extends Msg
 
-  object Commands {
-    def signup(newUserInfo: NewUserInfo): Cmd[IO, Msg] = {
-      val onSuccess: Response => Msg =
-        response =>
-          response.status match {
-            case Status(201, _) => SignUpSuccess("Success! Log in Now. ")
-            case Status(s, _) if s >= 400 && s < 500 =>
-              val json   = response.body
-              val parsed = parse(json).flatMap(json => json.hcursor.get[String]("error"))
-              parsed match {
-                case Left(e)  => SignUpError(s"Error: ${e.getMessage}")
-                case Right(e) => SignUpError(e)
-              }
-          }
-      val onError: HttpError => Msg =
-        e => SignUpError(e.toString)
-      Http.send(
-        Request(
-          url = "http://localhost:4041/api/auth/users",
-          method = Method.Post,
-          headers = List(),
-          body = Body.json(newUserInfo.asJson.toString),
-          timeout = Request.DefaultTimeOut,
-          withCredentials = false
-        ),
-        Decoder[Msg](onSuccess, onError)
-      )
+  object Endpoints {
+    val signup = new Endpoint[Msg] {
+      override val location: String = Constants.Endpoints.signup
+      override val method: Method   = Method.Post
+      override val onSuccess: Response => Msg = response =>
+        response.status match {
+          case Status(201, _) => SignUpSuccess("Success! Log in Now. ")
+          case Status(s, _) if s >= 400 && s < 500 =>
+            val json   = response.body
+            val parsed = parse(json).flatMap(json => json.hcursor.get[String]("error"))
+            parsed match {
+              case Left(e)  => SignUpError(s"Error: ${e.getMessage}")
+              case Right(e) => SignUpError(e)
+            }
+        }
+      override val onError: HttpError => Msg = e => SignUpError(e.toString)
+
     }
+  }
+  object Commands {
+    def signup(newUserInfo: NewUserInfo): Cmd[IO, Msg] =
+      Endpoints.signup.call(newUserInfo)
+
   }
 
 }
