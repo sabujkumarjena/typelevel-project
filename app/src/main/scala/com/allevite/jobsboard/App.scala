@@ -15,9 +15,9 @@ import com.allevite.jobsboard.pages.*
 
 object App {
 
-  type Msg = Router.Msg | Page.Msg
+  trait Msg
   // type Msg = Router.Msg
-  case class Model(router: Router, page: Page)
+  case class Model(router: Router, session: Session, page: Page)
 
 }
 @JSExportTopLevel("AlleViteApp")
@@ -29,7 +29,9 @@ class App extends TyrianApp[App.Msg, App.Model] {
     val page                = Page.get(location)
     val pageCmd             = page.initCmd
     val (router, routerCmd) = Router.startAt(location)
-    (Model(router, page), routerCmd |+| pageCmd)
+    val session             = Session()
+    val sessionCmd          = session.initCmd
+    (Model(router, session, page), routerCmd |+| sessionCmd |+| pageCmd)
   }
 
   // potentially endless stream of messages
@@ -51,8 +53,10 @@ class App extends TyrianApp[App.Msg, App.Model] {
         (model.copy(router = newRouter, page = newPage), routerCmd |+| newPageCmd)
       }
 
-
-    case msg: Page.Msg =>
+    case msg: Session.Msg =>
+      val (newSession, cmd) = model.session.update(msg)
+      (model.copy(session = newSession), cmd)
+    case msg: App.Msg =>
       // update the page
       val (newPage, cmd) = model.page.update(msg)
       (model.copy(page = newPage), cmd)

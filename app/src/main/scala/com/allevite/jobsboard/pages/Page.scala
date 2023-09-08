@@ -2,6 +2,8 @@ package com.allevite.jobsboard.pages
 
 import tyrian.*
 import cats.effect.*
+import com.allevite.jobsboard.*
+import com.allevite.jobsboard.*
 object Page {
   trait Msg
   enum StatusKind {
@@ -32,13 +34,13 @@ object Page {
   }
 }
 abstract class Page {
-  import Page.*
+  //import Page.*
 //API
 //send a command upon instantiating
-  def initCmd: Cmd[IO, Msg]
+  def initCmd: Cmd[IO, App.Msg]
 // update
-  def update(msg: Msg): (Page, Cmd[IO, Msg])
-  def view(): Html[Msg]
+  def update(msg: App.Msg): (Page, Cmd[IO, App.Msg])
+  def view(): Html[App.Msg]
 }
 
 //login page

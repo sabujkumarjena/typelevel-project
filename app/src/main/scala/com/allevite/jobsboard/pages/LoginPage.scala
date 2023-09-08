@@ -11,6 +11,8 @@ import tyrian.Html.*
 import tyrian.http.*
 import com.allevite.jobsboard.common.*
 import com.allevite.jobsboard.domain.auth.*
+import com.allevite.jobsboard.core.*
+import com.allevite.jobsboard.*
 /*
 form
   - email
@@ -25,9 +27,9 @@ case class LoginPage(
     status: Option[Page.Status] = None
 ) extends Page {
   import LoginPage.*
-  override def initCmd: Cmd[IO, Page.Msg] = Cmd.None
+  override def initCmd: Cmd[IO, App.Msg] = Cmd.None
 
-  override def update(msg: Page.Msg): (Page, Cmd[IO, Page.Msg]) = msg match {
+  override def update(msg: App.Msg): (Page, Cmd[IO, App.Msg]) = msg match {
     case UpdateEmail(email)       => (this.copy(email = email), Cmd.None)
     case UpdatePassword(password) => (this.copy(password = password), Cmd.None)
     case AttemptLogin =>
@@ -46,11 +48,11 @@ case class LoginPage(
           )
         )
     case LoginError(message) => (setErrorStatus(message), Cmd.None)
-    case LoginSuccess(token) => (setSuccessStatus(token), Cmd.None)
-    case _ => (this, Cmd.None)
+    case LoginSuccess(token) => (setSuccessStatus(token), Cmd.Emit(Session.SetToken(email, token)))
+    case _                   => (this, Cmd.None)
   }
 
-  override def view(): Html[Page.Msg] =
+  override def view(): Html[App.Msg] =
     div(`class` := "form-section")(
       // title: Sign Up
       div(`class` := "top-section")(
@@ -108,7 +110,7 @@ case class LoginPage(
 }
 
 object LoginPage {
-  trait Msg extends Page.Msg
+  trait Msg extends App.Msg
 
   case class UpdateEmail(email: String) extends Msg
 

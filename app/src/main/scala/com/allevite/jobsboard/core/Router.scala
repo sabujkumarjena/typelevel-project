@@ -3,7 +3,7 @@ package com.allevite.jobsboard.core
 import tyrian.*
 import cats.effect.*
 import fs2.dom.History
-
+import com.allevite.jobsboard.*
 //jobs.allevite.com/something  //location = something
 case class Router private (location: String, history: History[IO, String]) {
   import Router.*
@@ -26,7 +26,7 @@ case class Router private (location: String, history: History[IO, String]) {
 }
 
 object Router {
-  trait Msg
+  trait Msg                                                                      extends App.Msg
   case class ChangeLocation(location: String, browserTriggered: Boolean = false) extends Msg
   case class ExternalRedirect(location: String)                                  extends Msg
 
