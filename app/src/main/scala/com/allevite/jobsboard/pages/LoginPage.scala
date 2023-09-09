@@ -61,7 +61,7 @@ case class LoginPage(
       ),
       // form
       form(
-        name    := "login",
+        name    := "signin",
         `class` := "form",
         onEvent(
           "submit",

@@ -18,6 +18,8 @@ object Page {
     val JOBS             = "/jobs"
     val EMPTY            = ""
     val HOME             = "/"
+    val LOGOUT           = "/jobs"
+    val HASH             = "/#"
 
   }
 
@@ -34,7 +36,7 @@ object Page {
   }
 }
 abstract class Page {
-  //import Page.*
+  // import Page.*
 //API
 //send a command upon instantiating
   def initCmd: Cmd[IO, App.Msg]
