@@ -16,6 +16,7 @@ import com.allevite.jobsboard.pages.*
 object App {
 
   trait Msg
+  case object NoOp extends Msg
   // type Msg = Router.Msg
   case class Model(router: Router, session: Session, page: Page)
 
