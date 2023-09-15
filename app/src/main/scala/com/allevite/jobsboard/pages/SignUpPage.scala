@@ -133,6 +133,7 @@ object SignUpPage {
               case Left(e)  => SignUpError(s"Error: ${e.getMessage}")
               case Right(e) => SignUpError(e)
             }
+          case _ => SignUpError(" unknown reply from server. Something fishy..")
         }
       override val onError: HttpError => Msg = e => SignUpError(e.toString)
 
