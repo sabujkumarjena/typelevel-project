@@ -1,6 +1,7 @@
 package com.allevite.jobsboard.common
 
 object Constants {
+  val defaultPageSize: Int = 2
   val emailRegex =
     """^[a-zA-Z0-9\.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"""
 
@@ -14,6 +15,7 @@ object Constants {
     val resetPassword  = s"$root/api/auth/recover"
     val changePassword = s"$root/api/auth/users/password"
     val postJob        = s"$root/api/jobs/create"
+    val jobs           = s"$root/api/jobs"
   }
   object cookies {
     val duration = 10 * 24 * 3600 * 1000

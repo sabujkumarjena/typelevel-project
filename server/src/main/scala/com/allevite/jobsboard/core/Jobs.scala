@@ -45,7 +45,7 @@ other: Option[String],
 active: Boolean
 
  */
-class LiveJobs[F[_]: MonadCancelThrow: Logger] private(xa: Transactor[F]) extends Jobs[F] {
+class LiveJobs[F[_]: MonadCancelThrow: Logger] private (xa: Transactor[F]) extends Jobs[F] {
   override def create(ownerEmail: String, jobInfo: JobInfo): F[UUID] =
     sql"""
       INSERT INTO jobs(
@@ -117,7 +117,7 @@ class LiveJobs[F[_]: MonadCancelThrow: Logger] private(xa: Transactor[F]) extend
       .transact(xa)
 
   override def all(filter: JobFilter, pagination: Pagination): F[List[Job]] = {
-    val selectFragmant: Fragment =
+    val selectFragment: Fragment =
       fr"""
         SELECT
           id,
@@ -138,7 +138,6 @@ class LiveJobs[F[_]: MonadCancelThrow: Logger] private(xa: Transactor[F]) extend
           seniority,
           other,
           active
-        FROM jobs
       """
     val fromFragment: Fragment =
       fr"FROM jobs"
@@ -156,30 +155,32 @@ class LiveJobs[F[_]: MonadCancelThrow: Logger] private(xa: Transactor[F]) extend
       filter.remote.some.map(remote => fr"remote = $remote")
     )
 
-    /*
-    WHERE company in [filter.companies]
-    AND location in [filter.location]
-    AND  COUNTRY IN [FILTER.COUNTRIES]
-    AND seniority in [filter.seniorities]
-    AND (
-      tag1 = any(tags)
-      OR tag2=any(tags)
-      OR ... (for every tag in filter.tags)
-    )
-    AND salaryHi > [filter.salary]
-    AND remote = [filter.remote]
-     */
     val paginationFragment: Fragment =
       fr"ORDER BY id LIMIT ${pagination.limit}  OFFSET ${pagination.offset}"
 
-    val statement = selectFragmant |+| fromFragment |+| whereFragment |+| paginationFragment
-Logger[F].info(statement.toString) >>
-    statement
-      .query[Job]
-      .to[List]
-      .transact(xa)
-      .logError(e => s"Failed query: ${e.getMessage}")
+    val statement = selectFragment |+| fromFragment |+| whereFragment |+| paginationFragment
+    Logger[F].info(statement.toString) >>
+      statement
+        .query[Job]
+        .to[List]
+        .transact(xa)
+        .logError(e => s"Failed query: ${e.getMessage}")
+
   }
+
+  /*
+  WHERE company in [filter.companies]
+  AND location in [filter.location]
+  AND  COUNTRY IN [FILTER.COUNTRIES]
+  AND seniority in [filter.seniorities]
+  AND (
+    tag1 = any(tags)
+    OR tag2 = any(tags)
+    OR ... (for every tag in filter.tags)
+  )
+  AND salaryHi > [filter.salary]
+  AND remote = [filter.remote]
+   */
 
   override def find(id: UUID): F[Option[Job]] =
     sql"""
@@ -308,5 +309,6 @@ object LiveJobs {
       )
 
   }
-  def apply[F[_]: MonadCancelThrow: Logger](xa: Transactor[F]): F[LiveJobs[F]] = new LiveJobs[F](xa).pure[F]
+  def apply[F[_]: MonadCancelThrow: Logger](xa: Transactor[F]): F[LiveJobs[F]] =
+    new LiveJobs[F](xa).pure[F]
 }
