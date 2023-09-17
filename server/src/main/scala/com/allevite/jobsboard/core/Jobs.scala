@@ -22,6 +22,8 @@ trait Jobs[F[_]] {
   def find(id: UUID): F[Option[Job]]
   def update(id: UUID, jobInfo: JobInfo): F[Option[Job]]
   def delete(id: UUID): F[Int]
+
+  def possibleFilters(): F[JobFilter]
 }
 
 /*
@@ -45,7 +47,7 @@ other: Option[String],
 active: Boolean
 
  */
-class LiveJobs[F[_]: MonadCancelThrow: Logger] private (xa: Transactor[F]) extends Jobs[F] {
+class LiveJobs[F[_]: Async: Logger] private (xa: Transactor[F]) extends Jobs[F] {
   override def create(ownerEmail: String, jobInfo: JobInfo): F[UUID] =
     sql"""
       INSERT INTO jobs(
@@ -239,10 +241,47 @@ class LiveJobs[F[_]: MonadCancelThrow: Logger] private (xa: Transactor[F]) exten
          WHERE id = ${id}
        """.update.run
       .transact(xa)
+
+  // select all unique values for companies, locations, countries, seniorities, tags
+  override def possibleFilters(): F[JobFilter] = {
+    val yolo = xa.yolo
+    import yolo.*
+
+    val query = sql"""
+         SELECT
+         ARRAY( SELECT DISTINCT( company ) FROM jobs ) AS companies,
+         ARRAY( SELECT DISTINCT( location ) FROM jobs ) AS locations,
+         ARRAY( SELECT DISTINCT( country ) FROM jobs WHERE country IS NOT NULL) AS countries,
+         ARRAY( SELECT DISTINCT( seniority ) FROM jobs WHERE seniority IS NOT NULL ) AS seniorities,
+         ARRAY( SELECT DISTINCT( UNNEST( tags )) FROM jobs ) AS tags,
+         MAX( salaryHi),
+         false FROM jobs 
+       """
+      .query[JobFilter]
+
+    query.check() *>
+      query.option
+        .transact(xa)
+        .map(_.getOrElse(JobFilter()))
+  }
+
 }
 
 object LiveJobs {
 
+  given jobFilterRead: Read[JobFilter] = Read[
+    (
+        List[String],
+        List[String],
+        List[String],
+        List[String],
+        List[String],
+        Option[Int],
+        Boolean
+    )
+  ].map { case (companies, locations, countries, seniorities, tags, maxSalary, remote) =>
+    JobFilter(companies, locations, countries, seniorities, tags, maxSalary, remote)
+  }
   given jobRead: Read[Job] = Read[
     (
         UUID,                 // id
@@ -309,6 +348,6 @@ object LiveJobs {
       )
 
   }
-  def apply[F[_]: MonadCancelThrow: Logger](xa: Transactor[F]): F[LiveJobs[F]] =
+  def apply[F[_]: Async: Logger](xa: Transactor[F]): F[LiveJobs[F]] =
     new LiveJobs[F](xa).pure[F]
 }
