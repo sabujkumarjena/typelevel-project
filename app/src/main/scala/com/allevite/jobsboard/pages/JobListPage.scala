@@ -12,25 +12,33 @@ import cats.effect.*
 import com.allevite.jobsboard.*
 import com.allevite.jobsboard.common.*
 import com.allevite.jobsboard.domain.job.*
+import com.allevite.jobsboard.components.*
 case class JobListPage(
+    filterPanel: FilterPanel = FilterPanel(),
     jobs: List[Job] = List.empty,
     canLoadMore: Boolean = true,
     status: Option[Page.Status] = Some(Page.Status("Loading", Page.StatusKind.LOADING))
 ) extends Page {
   import JobListPage.*
-  override def initCmd: Cmd[IO, App.Msg] = Commands.getJobs()
+  override def initCmd: Cmd[IO, App.Msg] = filterPanel.initCmd |+| Commands.getJobs()
 
   override def update(msg: App.Msg): (Page, Cmd[IO, App.Msg]) = msg match {
     case SetErrorStatus(e) => (setErrorStatus(e), Cmd.None)
     case AddJobs(list, clm) =>
       (setSuccessStatus("Loaded").copy(jobs = this.jobs ++ list, canLoadMore = clm), Cmd.None)
     case LoadMoreJobs => (this, Commands.getJobs(offset = jobs.length))
-    case _            => (this, Cmd.None)
+    case msg: FilterPanel.Msg =>
+      val (newFilterPanel, cmd) = filterPanel.update(msg)
+      (this.copy(filterPanel = newFilterPanel), cmd)
+    case _ => (this, Cmd.None)
   }
 
   override def view(): Html[App.Msg] =
-    div(`class` := "jobs-container")(
-      jobs.map(renderJob) ++ maybeRenderLoadMore
+    div(`class` := "job-list-page")(
+      filterPanel.view(),
+      div(`class` := "jobs-container")(
+        jobs.map(renderJob) ++ maybeRenderLoadMore
+      )
     )
 
   // private
@@ -85,18 +93,11 @@ object JobListPage {
       override val location: String = Constants.endpoints.jobs + s"?limit=$limit&offset=$offset"
       override val method: Method   = Method.Post
       override val onError: HttpError => Msg = e => SetErrorStatus(e.toString)
-      override val onResponse: Response => Msg = response =>
-        response.status match {
-          case Status(s, _) if s >= 200 && s < 300 =>
-            val json   = response.body
-            val parsed = parse(json).flatMap(_.as[List[Job]])
-            parsed match {
-              case Left(parsingError) => SetErrorStatus(s"Parsing error: $parsingError")
-              case Right(list)        => AddJobs(list, canLoadMore = offset == 0 || !list.isEmpty)
-            }
-          case Status(code, message) if code >= 400 && code < 600 =>
-            SetErrorStatus(s"Error: $message")
-        }
+      override val onResponse: Response => Msg =
+        Endpoint.onResponse[List[Job], Msg](
+          list => AddJobs(list, canLoadMore = offset == 0 || !list.isEmpty),
+          SetErrorStatus(_)
+        )
     }
   }
 

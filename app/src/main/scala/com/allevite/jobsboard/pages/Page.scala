@@ -4,6 +4,7 @@ import tyrian.*
 import cats.effect.*
 import com.allevite.jobsboard.*
 import com.allevite.jobsboard.*
+import com.allevite.jobsboard.components.*
 object Page {
   trait Msg
   enum StatusKind {
@@ -39,15 +40,7 @@ object Page {
     case _            => NotFoundPage()
   }
 }
-abstract class Page {
-  // import Page.*
-//API
-//send a command upon instantiating
-  def initCmd: Cmd[IO, App.Msg]
-// update
-  def update(msg: App.Msg): (Page, Cmd[IO, App.Msg])
-  def view(): Html[App.Msg]
-}
+abstract class Page extends Component[ App.Msg, Page]
 
 //login page
 //signup page

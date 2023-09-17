@@ -154,7 +154,7 @@ class LiveJobs[F[_]: Async: Logger] private (xa: Transactor[F]) extends Jobs[F] 
         Fragments.or(tags.toList.map(tag => fr"$tag=any(tags)"): _*)
       ),
       filter.maxSalary.map(salary => fr"salaryHi > $salary"),
-      filter.remote.some.map(remote => fr"remote = $remote")
+      filter.remote.some.filter(identity).map(remote => fr"remote = $remote")
     )
 
     val paginationFragment: Fragment =
@@ -255,7 +255,7 @@ class LiveJobs[F[_]: Async: Logger] private (xa: Transactor[F]) extends Jobs[F] 
          ARRAY( SELECT DISTINCT( seniority ) FROM jobs WHERE seniority IS NOT NULL ) AS seniorities,
          ARRAY( SELECT DISTINCT( UNNEST( tags )) FROM jobs ) AS tags,
          MAX( salaryHi),
-         false FROM jobs 
+         false FROM jobs
        """
       .query[JobFilter]
 
