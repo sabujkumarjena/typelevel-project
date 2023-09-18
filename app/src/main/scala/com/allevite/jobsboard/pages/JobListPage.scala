@@ -14,7 +14,8 @@ import com.allevite.jobsboard.common.*
 import com.allevite.jobsboard.domain.job.*
 import com.allevite.jobsboard.components.*
 case class JobListPage(
-    filterPanel: FilterPanel = FilterPanel(),
+    filterPanel: FilterPanel = FilterPanel(filterAction = FilterJobs(_)),
+    jobFilter: JobFilter = JobFilter(),
     jobs: List[Job] = List.empty,
     canLoadMore: Boolean = true,
     status: Option[Page.Status] = Some(Page.Status("Loading", Page.StatusKind.LOADING))
@@ -26,7 +27,10 @@ case class JobListPage(
     case SetErrorStatus(e) => (setErrorStatus(e), Cmd.None)
     case AddJobs(list, clm) =>
       (setSuccessStatus("Loaded").copy(jobs = this.jobs ++ list, canLoadMore = clm), Cmd.None)
-    case LoadMoreJobs => (this, Commands.getJobs(offset = jobs.length))
+    case LoadMoreJobs => (this, Commands.getJobs(filter = jobFilter, offset = jobs.length))
+    case FilterJobs(selectedFilters) =>
+      val newJobFilter = createJobFilter(selectedFilters)
+      (this.copy(jobs = List(), jobFilter = newJobFilter), Commands.getJobs(filter = newJobFilter))
     case msg: FilterPanel.Msg =>
       val (newFilterPanel, cmd) = filterPanel.update(msg)
       (this.copy(filterPanel = newFilterPanel), cmd)
@@ -73,6 +77,18 @@ case class JobListPage(
       }
     )
   }
+
+  // util
+  private def createJobFilter(selectedFilters: Map[String, Set[String]]) =
+    JobFilter(
+      selectedFilters.get("Companies").getOrElse(Set()).toList,
+      selectedFilters.get("Locations").getOrElse(Set()).toList,
+      selectedFilters.get("Countries").getOrElse(Set()).toList,
+      selectedFilters.get("Seniorities").getOrElse(Set()).toList,
+      selectedFilters.get("Tags").getOrElse(Set()).toList,
+      Some(filterPanel.maxSalary),
+      filterPanel.remote
+    )
   def setErrorStatus(message: String) =
     this.copy(status = Some(Page.Status(message, Page.StatusKind.ERROR)))
 
@@ -85,9 +101,10 @@ object JobListPage {
 
   trait Msg extends App.Msg
 
-  case class SetErrorStatus(error: String)                  extends Msg
-  case class AddJobs(list: List[Job], canLoadMore: Boolean) extends Msg
-  case object LoadMoreJobs                                  extends Msg
+  case class SetErrorStatus(error: String)                         extends Msg
+  case class AddJobs(list: List[Job], canLoadMore: Boolean)        extends Msg
+  case object LoadMoreJobs                                         extends Msg
+  case class FilterJobs(selectedFilters: Map[String, Set[String]]) extends Msg
   object Endpoints {
     def getJobs(limit: Int = Constants.defaultPageSize, offset: Int = 0) = new Endpoint[Msg] {
       override val location: String = Constants.endpoints.jobs + s"?limit=$limit&offset=$offset"
