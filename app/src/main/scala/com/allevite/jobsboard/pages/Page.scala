@@ -10,7 +10,10 @@ object Page {
   enum StatusKind {
     case SUCCESS, ERROR, LOADING
   }
-  case class Status(message: String, kind: StatusKind)
+  final case class Status(message: String, kind: StatusKind)
+  object Status {
+    val LOADING = Status("Loading", StatusKind.LOADING)
+  }
   object Urls {
     val LOGIN           = "/login"
     val SIGNUP          = "/signup"
@@ -23,6 +26,7 @@ object Page {
     val HOME            = "/"
     val LOGOUT          = "/jobs"
     val HASH            = "/#"
+    def JOB(id: String) = s"/jobs/$id"
 
   }
 
@@ -40,7 +44,7 @@ object Page {
     case _            => NotFoundPage()
   }
 }
-abstract class Page extends Component[ App.Msg, Page]
+abstract class Page extends Component[App.Msg, Page]
 
 //login page
 //signup page

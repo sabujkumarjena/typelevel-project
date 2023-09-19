@@ -37,7 +37,7 @@ final case class ProfilePage(
     renderInput("Old Password", "oldPassword", "password", true, UpdateOP(_)),
     renderInput("New Password", "newPassword", "password", true, UpdateNP(_)),
     button(`type` := "button", onClick(AttemptCP))("Change Password")
-    // renderAuxLink(Page.Urls.RESET_PASSWORD, "Have a token?")
+    // Anchors.renderSimpleNavLink(Page.Urls.RESET_PASSWORD, "Have a token?")
   )
 
   // util

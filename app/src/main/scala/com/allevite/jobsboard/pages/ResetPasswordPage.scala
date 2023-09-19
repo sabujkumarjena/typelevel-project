@@ -13,7 +13,7 @@ import com.allevite.jobsboard.*
 import com.allevite.jobsboard.domain.auth.*
 import com.allevite.jobsboard.common.*
 import tyrian.http.{HttpError, Method, Response}
-
+import com.allevite.jobsboard.components.Anchors
 //email, token, new password + button
 case class ResetPasswordPage(
     email: String = "",
@@ -56,7 +56,7 @@ case class ResetPasswordPage(
     renderInput("Token", "token", "text", true, UpdateToken(_)),
     renderInput("Password", "password", "password", true, UpdatePassword(_)),
     button(`type` := "button", onClick(AttemptResetPassword))("Set Password"),
-    renderAuxLink(Page.Urls.FORGOT_PASSWORD, "Don't have a token yet? ")
+    Anchors.renderSimpleNavLink("Don't have a token yet? ",Page.Urls.FORGOT_PASSWORD )
   )
 
   // utils

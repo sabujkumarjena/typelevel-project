@@ -13,6 +13,7 @@ import com.allevite.jobsboard.common.*
 import com.allevite.jobsboard.domain.auth.*
 import com.allevite.jobsboard.core.*
 import com.allevite.jobsboard.*
+import com.allevite.jobsboard.components.Anchors
 /*
 form
   - email
@@ -58,7 +59,7 @@ case class LoginPage(
     renderInput("Email", "email", "text", true, UpdateEmail(_)),
     renderInput("Password", "password", "password", true, UpdatePassword(_)),
     button(`type` := "button", onClick(AttemptLogin))("Log In"),
-    renderAuxLink(Page.Urls.FORGOT_PASSWORD, "Forgot password?")
+    Anchors.renderSimpleNavLink("Forgot password?", Page.Urls.FORGOT_PASSWORD )
   )
 
   //////////////////////////////////

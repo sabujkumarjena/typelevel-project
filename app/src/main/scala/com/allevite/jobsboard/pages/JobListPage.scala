@@ -18,7 +18,7 @@ case class JobListPage(
     jobFilter: JobFilter = JobFilter(),
     jobs: List[Job] = List.empty,
     canLoadMore: Boolean = true,
-    status: Option[Page.Status] = Some(Page.Status("Loading", Page.StatusKind.LOADING))
+    status: Option[Page.Status] = Some(Page.Status.LOADING)
 ) extends Page {
   import JobListPage.*
   override def initCmd: Cmd[IO, App.Msg] = filterPanel.initCmd |+| Commands.getJobs()
@@ -56,7 +56,11 @@ case class JobListPage(
         )
       ),
       div(`class` := "job-card-content")(
-        h4(s"${job.jobInfo.company} - ${job.jobInfo.title}")
+        Anchors
+          .renderSimpleNavLink(
+            s"${job.jobInfo.company} - ${job.jobInfo.title}",
+            Page.Urls.JOB(job.id.toString)
+          )
       ),
       div(`class` := "job-card-apply")(
         a(href := job.jobInfo.externalUrl, target := "blank")("apply")
