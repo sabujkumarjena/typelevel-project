@@ -6,8 +6,8 @@ import tyrian.Html.*
 import com.allevite.jobsboard.core.*
 import com.allevite.jobsboard.App
 object Anchors {
-  def renderSimpleNavLink(text: String, location: String) =
-    renderNavLink(text, location)(Router.ChangeLocation(_))
+  def renderSimpleNavLink(text: String, location: String, cssClass: String = "") =
+    renderNavLink(text, location, cssClass)(Router.ChangeLocation(_))
 
   def renderNavLink(text: String, location: String, cssClass: String = "")(
       location2msg: String => App.Msg

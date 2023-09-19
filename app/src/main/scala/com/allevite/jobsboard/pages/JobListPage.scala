@@ -38,34 +38,20 @@ case class JobListPage(
   }
 
   override def view(): Html[App.Msg] =
-    div(`class` := "job-list-page")(
-      filterPanel.view(),
-      div(`class` := "jobs-container")(
-        jobs.map(renderJob) ++ maybeRenderLoadMore
+    section(`class` := "section-1")(
+      div(`class` := "container")(
+        div(`class` := "row jvm-recent-jobs-body")(
+          div(`class` := "col-lg-4")(
+            filterPanel.view()
+          ),
+          div(`class` := "col-lg-8")(
+            jobs.map(JobComponents.card) ++ maybeRenderLoadMore
+          )
+        )
       )
     )
 
   // private
-  private def renderJob(job: Job) =
-    div(`class` := "job-card")(
-      div(`class` := "job-card-img")(
-        img(
-          `class` := "job-logo",
-          src     := job.jobInfo.image.getOrElse(""),
-          alt     := job.jobInfo.title
-        )
-      ),
-      div(`class` := "job-card-content")(
-        Anchors
-          .renderSimpleNavLink(
-            s"${job.jobInfo.company} - ${job.jobInfo.title}",
-            Page.Urls.JOB(job.id.toString)
-          )
-      ),
-      div(`class` := "job-card-apply")(
-        a(href := job.jobInfo.externalUrl, target := "blank")("apply")
-      )
-    )
 
   private def maybeRenderLoadMore: Option[Html[App.Msg]] = status.map { s =>
     div(`class` := "load-more-action")(
@@ -74,7 +60,9 @@ case class JobListPage(
         case Page.Status(e, Page.StatusKind.ERROR)   => div(e)
         case Page.Status(_, Page.StatusKind.SUCCESS) =>
           if (canLoadMore)
-            button(`type` := "button", onClick(LoadMoreJobs))("Load more")
+            button(`type` := "button", `class` := "load-more-btn", onClick(LoadMoreJobs))(
+              "Load more"
+            )
           else
             div("All jobs loaded")
 
@@ -90,7 +78,7 @@ case class JobListPage(
       selectedFilters.get("Countries").getOrElse(Set()).toList,
       selectedFilters.get("Seniorities").getOrElse(Set()).toList,
       selectedFilters.get("Tags").getOrElse(Set()).toList,
-      Some(filterPanel.maxSalary),
+      Some(filterPanel.maxSalary).filter(_ > 0),
       filterPanel.remote
     )
   def setErrorStatus(message: String) =

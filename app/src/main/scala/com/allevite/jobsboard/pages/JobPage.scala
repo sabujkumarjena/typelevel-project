@@ -12,6 +12,7 @@ import tyrian.Html.*
 import com.allevite.jobsboard.*
 import com.allevite.jobsboard.domain.job.*
 import com.allevite.jobsboard.common.*
+import com.allevite.jobsboard.components.*
 import tyrian.http.*
 
 import laika.api.*
@@ -31,28 +32,11 @@ case class JobPage(
     case _           => (this, Cmd.None)
   }
   override def view(): Html[App.Msg] = maybeJob match {
-    case Some(job) => renderJobPage(job)
+    case Some(job) => JobComponents.card(job)
     case None      => renderNoJobPage()
   }
 
 //private
-
-  private def renderJobPage(job: Job) =
-    div(`class` := "job-page")(
-      div(`class` := "job-hero")(
-        img(
-          `class` := "job-logo",
-          src     := job.jobInfo.image.getOrElse(""),
-          alt     := job.jobInfo.title
-        ),
-        h1(s"${job.jobInfo.company} - ${job.jobInfo.title}")
-      ),
-      div(`class` := "job-overview")(
-        renderJobDetails(job)
-      ),
-      renderJobDescription(job),
-      a(href := job.jobInfo.externalUrl, `class` := "job-apply-action", target := "blank")("Apply")
-    )
 
   private def renderJobDescription(job: Job) = {
     val descriptionHtml = markdownTransformer.transform(job.jobInfo.description) match {
