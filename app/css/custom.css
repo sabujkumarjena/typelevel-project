@@ -78,3 +78,23 @@ display: block;
     color: var(--background-color);
     text-decoration: none;
 }
+
+.jvm-jobs-details-card-profile-img {
+    width: 100px;
+    height: 100px;
+    background: white;
+    display: flex;
+    align-items: center;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid var(--background-color)
+}
+
+.container-fluid {
+    padding: 0;
+}
+
+.jvm-jobs-details-card-profile-job-details-company-and-location.job-summary.job-detail {
+    color: white;
+}
+

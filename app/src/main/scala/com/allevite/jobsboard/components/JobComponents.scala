@@ -5,6 +5,8 @@ import tyrian.Html.*
 import com.allevite.jobsboard.App
 import com.allevite.jobsboard.domain.job.*
 import com.allevite.jobsboard.pages.Page
+import laika.api.*
+import laika.format.*
 
 object JobComponents {
 
@@ -35,6 +37,23 @@ object JobComponents {
       )
     )
 
+  // logic
+  val markdownTransformer = Transformer
+    .from(Markdown)
+    .to(HTML)
+    .build
+  def renderJobDescription(job: Job) = {
+    val descriptionHtml = markdownTransformer.transform(job.jobInfo.description) match {
+      case Left(e) =>
+        """
+          |Dammit.
+             Had an error showing Markdown for this job description.
+             Just hit the apply button (that shoud still work) - also let them know about the problem!
+          |""".stripMargin
+      case Right(html) => html
+    }
+    div(`class` := "job-description")().innerHtml(descriptionHtml)
+  }
   def renderJobSummary(job: Job) =
     div(`class` := "job-summary")(
       renderDetail("dollar", fullSalaryString(job)),
