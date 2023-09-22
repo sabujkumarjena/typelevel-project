@@ -20,6 +20,8 @@ import com.allevite.jobsboard.domain.security.*
 import com.allevite.jobsboard.domain.user.*
 import com.allevite.jobsboard.http.validation.syntax.*
 
+import org.typelevel.ci.CIStringSyntax
+
 import java.util.UUID
 import scala.collection.mutable
 import scala.language.implicitConversions
@@ -101,20 +103,38 @@ class JobRoutes[F[_]: Concurrent: Logger: SecuredHandler] private (jobs: Jobs[F]
 
   // Stripe Endpoints
   // POST /jobs/promoted {jobInfo}
-  private val promotedJobRoute: HttpRoutes[F] = HttpRoutes.of[F] {
-    case req @ POST -> Root / "promoted"  =>
-    req.validate[JobInfo] { jobInfo =>
+  private val promotedJobRoute: AuthRoute[F] =  {
+    case req @ POST -> Root / "promoted" asAuthed user =>
+    req.request.validate[JobInfo] { jobInfo =>
       for {
-        jobId <- jobs.create("TODO@allevite.com", jobInfo)
-        session <- stripe.createCheckoutSession(jobId.toString, "TODO@allevite.com")
+        jobId <- jobs.create(user.email, jobInfo)
+        session <- stripe.createCheckoutSession(jobId.toString, user.email)
         resp  <- session.map(sess => Ok(sess.getUrl())).getOrElse(NotFound())
       } yield resp
     }
   }
 
-  val unauthedRoutes = allFiltersRoute <+> allJobsRoute <+> findJobRoute
+  private val promotedJobWebhook: HttpRoutes[F] = HttpRoutes.of[F] {
+    case req @ POST -> Root / "webhook" =>
+      val stripeSigHeader = req.headers.get(ci"Stripe-Signature").flatMap(_.toList.headOption).map(_.value)
+      stripeSigHeader match {
+        case Some(signature) => for {
+          payload <- req.bodyText.compile.string
+          handled <- stripe.handleWebhookEvent(payload, signature, jobId => jobs.activate(UUID.fromString(jobId)))
+          resp <-  if (handled.nonEmpty) Ok() else NoContent()
+        } yield resp
+        case None =>
+          Logger[F].info(" Got webhook event with no Stripe signature") *>
+          Forbidden("No Stripe signature")
+      }
+  }
+
+
+
+  val unauthedRoutes =   allFiltersRoute <+> allJobsRoute <+> findJobRoute <+> promotedJobWebhook
   val authedRoutes = SecuredHandler[F].liftService(
-    createJobRoute.restrictedTo(allRoles) |+|
+    createJobRoute.restrictedTo(adminOnly) |+|
+      promotedJobRoute.restrictedTo(allRoles) |+|
       updateJobRoute.restrictedTo(allRoles) |+|
       deleteJobRoute.restrictedTo(allRoles)
   )

@@ -8,6 +8,10 @@ import com.stripe.Stripe as TheStripe
 import com.stripe.model.checkout.Session
 import com.stripe.param.checkout.SessionCreateParams
 import com.allevite.jobsboard.logging.syntax.*
+import com.stripe.net.Webhook
+
+import scala.util.Try
+import scala.jdk.OptionConverters.*
 
 trait Stripe[F[_]] {
   /*
@@ -18,12 +22,18 @@ trait Stripe[F[_]] {
   4.  the user pays(fill in cc details..)
   5.  the backend will be notified by Stripe (webhook)
       - test mode: use Stripe CLI to redirect the events to localhost:4041/1pi/jobs/webhook..
-  6.  Perform the final operation on the job advert - set the active flag to false for that job id
+  6.  Perform the final operation on the job advert - set the active flag to true for that job id
       app -> http -> stripe -> redirect user
                                             <- user pays stripe
       activate job  <- webhook <- stripe
    */
   def createCheckoutSession(jobId: String, userEmail: String): F[Option[Session]]
+  def handleWebhookEvent[A](
+      payload: String,
+      signature: String,
+      action: String => F[A]
+  ): F[Option[A]]
+
 }
 /*
 SessionCreateParams params =
@@ -46,7 +56,8 @@ class LiveStripe[F[_]: MonadThrow: Logger] private (
     key: String,
     price: String,
     successUrl: String,
-    cancelUrl: String
+    cancelUrl: String,
+    webhookSecret: String
 ) extends Stripe[F] {
   TheStripe.apiKey = key
   override def createCheckoutSession(jobId: String, userEmail: String): F[Option[Session]] = {
@@ -62,7 +73,7 @@ class LiveStripe[F[_]: MonadThrow: Logger] private (
         SessionCreateParams.PaymentIntentData.builder().setReceiptEmail(userEmail).build()
       )
       .setSuccessUrl(s"$successUrl/$jobId") // need config
-      .setCancelUrl(cancelUrl)   // need config
+      .setCancelUrl(cancelUrl)              // need config
       .setCustomerEmail(userEmail)
       .setClientReferenceId(jobId) // will be sent back to me by the webhook
       .addLineItem(
@@ -81,6 +92,40 @@ class LiveStripe[F[_]: MonadThrow: Logger] private (
       .recover { case _ => None }
 
   }
+
+  override def handleWebhookEvent[A](
+      payload: String,
+      signature: String,
+      action: String => F[A]
+  ): F[Option[A]] =
+    MonadThrow[F]
+      .fromTry(
+        Try(Webhook.constructEvent(payload, signature, "secrete"))
+      ) // TODO pass from config
+      .logError(e => "Stripe security verification failed - possibly fake attempt")
+      .flatMap { event =>
+        event.getType() match {
+          case "checkout.session.completed" => // happy path
+            event
+              .getDataObjectDeserializer()
+              .getObject()                  // Java Optional[...]
+              .toScala                      // Scala Option[..]
+              .map(_.asInstanceOf[Session]) // Option[Session]
+              .map(_.getClientReferenceId())
+              .map(action) // Option[F[A]]
+              .sequence    // F[Option[A]]
+              .log(
+                {
+                  case None => s"Event ${event.getId()} not producing any effect - check stripe"
+                  case Some(value) => s"Event ${event.getId()} fully paid - OK"
+                },
+                e => s"Webhook action failed: $e"
+              )
+          case _ => None.pure[F] // discard the effect
+        }
+      }
+      .logError(e => s"Something else went wrong: $e")
+      .recover { case _ => None }
 }
 
 object LiveStripe {
@@ -89,6 +134,7 @@ object LiveStripe {
       stripeConfig.key,
       stripeConfig.price,
       stripeConfig.successUrl,
-      stripeConfig.cancelUrl
+      stripeConfig.cancelUrl,
+      stripeConfig.webhookSecret
     ).pure[F]
 }

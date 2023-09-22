@@ -21,6 +21,8 @@ trait Jobs[F[_]] {
   def all(): F[List[Job]]
   def find(id: UUID): F[Option[Job]]
   def update(id: UUID, jobInfo: JobInfo): F[Option[Job]]
+
+  def activate(id: UUID): F[Int]
   def delete(id: UUID): F[Int]
 
   def possibleFilters(): F[JobFilter]
@@ -234,6 +236,15 @@ class LiveJobs[F[_]: Async: Logger] private (xa: Transactor[F]) extends Jobs[F] 
        """.update.run
       .transact(xa)
       .flatMap(_ => find(id))
+
+  override def activate(id: UUID): F[Int] =
+    sql"""
+       UPDATE jobs
+             SET
+              active = true
+        WHERE id = ${id}
+        """.update.run
+      .transact(xa)
 
   override def delete(id: UUID): F[Int] =
     sql"""
