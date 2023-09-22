@@ -1,9 +1,9 @@
 package com.allevite.jobsboard.modules
 
-import com.allevite.jobsboard.core.{Auth, Emails, Jobs, LiveAuth, LiveEmails, LiveJobs, LiveTokens, LiveUsers, LiveStripe, Stripe, Tokens, Users}
+import com.allevite.jobsboard.core.{Auth, Emails, Jobs, LiveAuth, LiveEmails, LiveJobs, LiveStripe, LiveTokens, LiveUsers, Stripe, Tokens, Users}
 import cats.effect.*
 import cats.implicits.*
-import com.allevite.jobsboard.config.{EmailServiceConfig, SecurityConfig, TokenConfig}
+import com.allevite.jobsboard.config.{EmailServiceConfig, SecurityConfig, StripeConfig, TokenConfig}
 import doobie.util.transactor.Transactor
 import org.typelevel.log4cats.Logger
 
@@ -15,7 +15,8 @@ object Core {
   def apply[F[_]: Async: Logger](
       xa: Transactor[F],
       tokenConfig: TokenConfig,
-      emailServiceConfig: EmailServiceConfig
+      emailServiceConfig: EmailServiceConfig,
+      stripeConfig: StripeConfig
   ): Resource[F, Core[F]] = {
     val coreF = for {
       jobs  <- LiveJobs[F](xa)
@@ -23,7 +24,7 @@ object Core {
       tokens <- LiveTokens[F](users)(xa, tokenConfig)
       emails <- LiveEmails[F](emailServiceConfig )
       auth  <- LiveAuth[F](users, tokens, emails)
-      stripe <- LiveStripe[F]()
+      stripe <- LiveStripe[F](stripeConfig)
     } yield new Core(jobs, users, tokens, emails, auth, stripe)
     Resource.eval(coreF)
   }

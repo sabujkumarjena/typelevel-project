@@ -2,11 +2,11 @@ package com.allevite.jobsboard.core
 
 import cats.*
 import cats.implicits.*
+import com.allevite.jobsboard.config.StripeConfig
 import org.typelevel.log4cats.Logger
-import com.stripe.{Stripe => TheStripe}
+import com.stripe.Stripe as TheStripe
 import com.stripe.model.checkout.Session
 import com.stripe.param.checkout.SessionCreateParams
-
 import com.allevite.jobsboard.logging.syntax.*
 
 trait Stripe[F[_]] {
@@ -42,8 +42,13 @@ SessionCreateParams params =
  */
 // globally set constant
 
-class LiveStripe[F[_]: MonadThrow: Logger] extends Stripe[F] {
-  TheStripe.apiKey = "sk_test_51Nsn10SJ4j6AZCvUzbDCFIHDyIPrbtdS3sAwJBkSXDdUd8qzyNbspjqhbw0Elauo8LT0tzAtpTulARTcxzMSWp6P00BTiZoddg"
+class LiveStripe[F[_]: MonadThrow: Logger] private (
+    key: String,
+    price: String,
+    successUrl: String,
+    cancelUrl: String
+) extends Stripe[F] {
+  TheStripe.apiKey = key
   override def createCheckoutSession(jobId: String, userEmail: String): F[Option[Session]] = {
     SessionCreateParams
       .builder()
@@ -56,8 +61,8 @@ class LiveStripe[F[_]: MonadThrow: Logger] extends Stripe[F] {
       .setPaymentIntentData(
         SessionCreateParams.PaymentIntentData.builder().setReceiptEmail(userEmail).build()
       )
-      .setSuccessUrl(s"http://localhost:1234/job/$jobId") // need config
-      .setCancelUrl(s"http://localhost:1234")             // need config
+      .setSuccessUrl(s"$successUrl/$jobId") // need config
+      .setCancelUrl(cancelUrl)   // need config
       .setCustomerEmail(userEmail)
       .setClientReferenceId(jobId) // will be sent back to me by the webhook
       .addLineItem(
@@ -65,7 +70,7 @@ class LiveStripe[F[_]: MonadThrow: Logger] extends Stripe[F] {
           .builder()
           .setQuantity(1L)
           // Provide the exact Price ID (for example, pr_1234) of the product you want to sell
-          .setPrice("price_1NsnDDSJ4j6AZCvU2tfrdHO5") // need config
+          .setPrice(price) // need config
           .build()
       )
       .build()
@@ -79,5 +84,11 @@ class LiveStripe[F[_]: MonadThrow: Logger] extends Stripe[F] {
 }
 
 object LiveStripe {
-  def apply[F[_]: MonadThrow: Logger](): F[LiveStripe[F]] = new LiveStripe[F].pure[F]
+  def apply[F[_]: MonadThrow: Logger](stripeConfig: StripeConfig): F[LiveStripe[F]] =
+    new LiveStripe[F](
+      stripeConfig.key,
+      stripeConfig.price,
+      stripeConfig.successUrl,
+      stripeConfig.cancelUrl
+    ).pure[F]
 }

@@ -25,11 +25,12 @@ object Application extends IOApp.Simple {
             emberConfig,
             securityConfig,
             tokenConfig,
-            emailServiceConfig
+            emailServiceConfig,
+            stripeConfig
           ) =>
         val appResource = for {
           xa      <- Database.makePostgresResource[IO](postgresConfig)
-          core    <- Core[IO](xa, tokenConfig, emailServiceConfig)
+          core    <- Core[IO](xa, tokenConfig, emailServiceConfig, stripeConfig)
           httpApi <- HttpApi[IO](core, securityConfig)
           server <-
             EmberServerBuilder
