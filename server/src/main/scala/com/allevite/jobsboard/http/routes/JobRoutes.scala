@@ -23,7 +23,7 @@ import com.allevite.jobsboard.http.validation.syntax.*
 import java.util.UUID
 import scala.collection.mutable
 import scala.language.implicitConversions
-class JobRoutes[F[_]: Concurrent: Logger: SecuredHandler] private (jobs: Jobs[F])
+class JobRoutes[F[_]: Concurrent: Logger: SecuredHandler] private (jobs: Jobs[F], stripe: Stripe[F])
     extends HttpValidationDsl[F] {
 
   object OffsetQueryParam extends OptionalQueryParamDecoderMatcher[Int]("offset")
@@ -99,6 +99,19 @@ class JobRoutes[F[_]: Concurrent: Logger: SecuredHandler] private (jobs: Jobs[F]
 
   }
 
+  // Stripe Endpoints
+  // POST /jobs/promoted {jobInfo}
+  private val promotedJobRoute: HttpRoutes[F] = HttpRoutes.of[F] {
+    case req @ POST -> Root / "promoted"  =>
+    req.validate[JobInfo] { jobInfo =>
+      for {
+        jobId <- jobs.create("TODO@allevite.com", jobInfo)
+        session <- stripe.createCheckoutSession(jobId.toString, "TODO@allevite.com")
+        resp  <- session.map(sess => Ok(sess.getUrl())).getOrElse(NotFound())
+      } yield resp
+    }
+  }
+
   val unauthedRoutes = allFiltersRoute <+> allJobsRoute <+> findJobRoute
   val authedRoutes = SecuredHandler[F].liftService(
     createJobRoute.restrictedTo(allRoles) |+|
@@ -111,6 +124,6 @@ class JobRoutes[F[_]: Concurrent: Logger: SecuredHandler] private (jobs: Jobs[F]
   )
 }
 object JobRoutes {
-  def apply[F[_]: Concurrent: Logger: SecuredHandler](jobs: Jobs[F]) =
-    new JobRoutes[F](jobs)
+  def apply[F[_]: Concurrent: Logger: SecuredHandler](jobs: Jobs[F], stripe: Stripe[F]) =
+    new JobRoutes[F](jobs, stripe)
 }
