@@ -14,11 +14,14 @@ import com.allevite.jobsboard.fixures.*
 import com.allevite.jobsboard.core.*
 import com.allevite.jobsboard.domain.job.*
 import com.allevite.jobsboard.domain.pagination.Pagination
+import com.stripe.model.checkout.Session
 import org.http4s.HttpRoutes
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import org.typelevel.log4cats.Logger
 
 import java.util.UUID
+import com.stripe.model.checkout.Session
+import com.stripe.param.checkout.SessionCreateParams
 class JobRoutesSpec
     extends AsyncFreeSpec
     with AsyncIOSpec
@@ -48,11 +51,21 @@ class JobRoutesSpec
     override def possibleFilters(): IO[JobFilter] = IO(
       defaultFilter
     )
+
+  override def activate(id: UUID): IO[Int] = IO.pure(1)
+  }
+
+  val stripe: Stripe[IO]  = new LiveStripe[IO] ("key", "price", "example.com/test" , "example.com/fail", "secret" ){
+    override def createCheckoutSession(jobId: String, userEmail: String): IO[Option[Session]] =
+      IO.pure(Some(Session.create(SessionCreateParams.builder().build())))
+
+    override def handleWebhookEvent[A](payload: String, signature: String, action: String => IO[A]): IO[Option[A]] =
+      IO.pure(None)
   }
 
   given logger: Logger[IO] = Slf4jLogger.getLogger[IO]
   // this is what we are testing
-  val jobsRoutes: HttpRoutes[IO] = JobRoutes[IO](jobs).routes
+  val jobsRoutes: HttpRoutes[IO] = JobRoutes[IO](jobs, stripe).routes
   val defaultFilter: JobFilter = JobFilter(companies = List("Awesome Company"))
   ////////////////////////
   // tests

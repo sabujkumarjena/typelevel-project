@@ -52,7 +52,7 @@ SessionCreateParams params =
  */
 // globally set constant
 
-class LiveStripe[F[_]: MonadThrow: Logger] private (
+class LiveStripe[F[_]: MonadThrow: Logger](
     key: String,
     price: String,
     successUrl: String,
