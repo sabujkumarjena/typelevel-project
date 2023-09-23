@@ -4,6 +4,7 @@ import tyrian.*
 import cats.effect.*
 import fs2.dom.History
 import com.allevite.jobsboard.*
+import org.scalajs.dom.window
 //jobs.allevite.com/something  //location = something
 case class Router private (location: String, history: History[IO, String]) {
   import Router.*
@@ -16,8 +17,15 @@ case class Router private (location: String, history: History[IO, String]) {
           else goto(newLocation)         // manual action, need to push location
         (this.copy(location = newLocation), historyCmd)
       }
-
+    case ExternalRedirect(location) =>
+      window.location.href = maybeCleanUrl(location)
+      (this, Cmd.None)
   }
+
+  private def maybeCleanUrl(url: String) =
+    if (url.startsWith("\""))
+      url.substring(1, url.length() - 1)
+    else url
 
   def goto[M](location: String): Cmd[IO, M] =
     Cmd.SideEffect[IO] {

@@ -58,7 +58,7 @@ case class PostJobPage(
     case AttemptPostJob =>
       (
         this,
-        Commands.postJob(
+        Commands.postJob(promoted = true)(
           company,
           title,
           description,
@@ -80,40 +80,38 @@ case class PostJobPage(
     case _                   => (this, Cmd.None)
   }
 
-  override def view(): Html[App.Msg] =
-    if (Session.isActive) super.view()
-    else renderInvalidPage
-
-  private def renderInvalidPage =
+  private def renderInvalidContents() = List(
     div(
-      h1("Post Jobs"),
       div("Oops!! It seems you are not logged in yet.")
     )
-
-  private def  parseNumber(s: String) =
+  )
+  private def parseNumber(s: String) =
     Try(s.toInt).getOrElse(0)
   def setErrorStatus(message: String): Page =
     this.copy(status = Some(Page.Status(message, Page.StatusKind.ERROR)))
 
   def setSuccessStatus(message: String): Page =
     this.copy(status = Some(Page.Status(message, Page.StatusKind.SUCCESS)))
-  override protected def renderFormContent(): List[Html[App.Msg]] = List(
-    renderInput("Company", "company", "text", true, UpdateCompany(_)),
-    renderInput("Title", "title", "text", true, UpdateTitle(_)),
-    renderTextArea("Description", "description", true, UpdateDescription(_)),
-    renderInput("ExternalUrl", "externalUrl", "text", true, UpdateExternalUrl(_)),
-    renderInput("Remote", "remote", "checkbox", true, _ => ToggleRemote),
-    renderInput("Location", "location", "text", true, UpdateLocation(_)),
-    renderInput("SalaryLo", "salaryLo", "number", false, s => UpdateSalaryLo(parseNumber(s))),
-    renderInput("SalaryHi", "salaryHi", "number", false, s => UpdateSalaryHi(parseNumber(s))),
-    renderInput("Currency", "currency", "text", false, UpdateCurrency(_)),
-    renderInput("Country", "country", "text", false, UpdateCountry(_)),
-    renderImageUploadInput("Logo", "logo", image, UpdateImageFile(_)),
-    renderInput("Tags", "tags", "text", false, UpdateTags(_)),
-    renderInput("Seniority", "seniority", "text", false, UpdateSeniority(_)),
-    renderInput("Other", "other", "text", false, UpdateOther(_)),
-    button(`type` := "button", onClick(AttemptPostJob))("Post Job")
-  )
+  override protected def renderFormContent(): List[Html[App.Msg]] =
+    if (!Session.isActive) renderInvalidContents()
+    else
+      List(
+        renderInput("Company", "company", "text", true, UpdateCompany(_)),
+        renderInput("Title", "title", "text", true, UpdateTitle(_)),
+        renderTextArea("Description", "description", true, UpdateDescription(_)),
+        renderInput("ExternalUrl", "externalUrl", "text", true, UpdateExternalUrl(_)),
+        renderInput("Remote", "remote", "checkbox", true, _ => ToggleRemote),
+        renderInput("Location", "location", "text", true, UpdateLocation(_)),
+        renderInput("SalaryLo", "salaryLo", "number", false, s => UpdateSalaryLo(parseNumber(s))),
+        renderInput("SalaryHi", "salaryHi", "number", false, s => UpdateSalaryHi(parseNumber(s))),
+        renderInput("Currency", "currency", "text", false, UpdateCurrency(_)),
+        renderInput("Country", "country", "text", false, UpdateCountry(_)),
+        renderImageUploadInput("Logo", "logo", image, UpdateImageFile(_)),
+        renderInput("Tags", "tags", "text", false, UpdateTags(_)),
+        renderInput("Seniority", "seniority", "text", false, UpdateSeniority(_)),
+        renderInput("Other", "other", "text", false, UpdateOther(_)),
+        button(`type` := "button", onClick(AttemptPostJob))("Post Job")
+      )
 
 }
 
@@ -150,22 +148,16 @@ object PostJobPage {
       override val location: String          = Constants.endpoints.postJob
       override val method: Method            = Method.Post
       override val onError: HttpError => Msg = e => PostJobError(e.toString)
-      override val onResponse: Response => Msg = response =>
-        response.status match {
-          case Status(s, _) if s >= 200 && s < 300 =>
-            val jobId = response.body
-            PostJobSuccess(jobId)
-          case Status(401, _) => PostJobError("You are not authorized to post a job")
-          case Status(s, _) if s >= 400 && s < 500 =>
-            val json   = response.body
-            val parsed = parse(json).flatMap(_.hcursor.get[String]("error"))
-            parsed match {
-              case Left(e)  => PostJobError(s"Error : $e")
-              case Right(e) => PostJobError(s"YError : $e")
-            }
+      override val onResponse: Response => Msg =
+        Endpoint.onResponseText(PostJobSuccess(_), PostJobError(_))
+    }
 
-          case _ => PostJobError("Unknown reply from server. Something is fishy.")
-        }
+    val postJobPromoted = new Endpoint[App.Msg] {
+      override val location: String              = Constants.endpoints.postJobPromoted
+      override val method: Method                = Method.Post
+      override val onError: HttpError => App.Msg = e => PostJobError(e.toString)
+      override val onResponse: Response => App.Msg =
+        Endpoint.onResponseText(Router.ExternalRedirect(_), PostJobError(_))
     }
   }
 
@@ -186,7 +178,7 @@ object PostJobPage {
         }
       }
     )(UpdateImage(_))
-    def postJob(
+    def postJob(promoted: Boolean = true)(
         company: String,
         title: String,
         description: String,
@@ -201,24 +193,30 @@ object PostJobPage {
         image: Option[String],
         seniority: Option[String],
         other: Option[String]
-    ) = Endpoints.postJob.callAuthorized(
-      JobInfo(
-        company,
-        title,
-        description,
-        externalUrl,
-        remote,
-        location,
-        salaryLo,
-        salaryHi,
-        currency,
-        country,
-        tags.map(text => text.split(",").map(_.trim).toList),
-        image,
-        seniority,
-        other
+    ) = {
+      val endpoint =
+        if (promoted) Endpoints.postJobPromoted
+        else Endpoints.postJob
+
+      endpoint.callAuthorized(
+        JobInfo(
+          company,
+          title,
+          description,
+          externalUrl,
+          remote,
+          location,
+          salaryLo,
+          salaryHi,
+          currency,
+          country,
+          tags.map(text => text.split(",").map(_.trim).toList),
+          image,
+          seniority,
+          other
+        )
       )
-    )
+    }
   }
 
 }
